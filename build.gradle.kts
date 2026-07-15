@@ -20,14 +20,14 @@ repositories {
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-jooq")
-    implementation("org.springframework.boot:spring-boot-starter-liquibase")
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("org.springframework.boot:spring-boot-starter-flyway")
     compileOnly("org.projectlombok:lombok")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     runtimeOnly("org.postgresql:postgresql")
     annotationProcessor("org.projectlombok:lombok")
     testImplementation("org.springframework.boot:spring-boot-starter-jooq-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-liquibase-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-flyway-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
