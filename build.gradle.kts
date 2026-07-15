@@ -4,6 +4,7 @@ plugins {
     id("org.springframework.boot") version "4.0.7"
     id("io.spring.dependency-management") version "1.1.7"
     id("org.jooq.jooq-codegen-gradle") version "3.19.35"
+    id("org.flywaydb.flyway") version "11.14.1"
 }
 
 group = "me.rcendrow"
@@ -20,16 +21,25 @@ repositories {
     mavenCentral()
 }
 
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.flywaydb:flyway-database-postgresql:11.14.1")
+    }
+}
+
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.springframework.boot:spring-boot-starter-jooq")
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.flywaydb:flyway-database-postgresql")
+    runtimeOnly("org.postgresql:postgresql")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
     implementation("tools.jackson.module:jackson-module-kotlin")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
-    runtimeOnly("org.postgresql:postgresql")
     jooqCodegen("org.postgresql:postgresql")
     testImplementation("org.springframework.boot:spring-boot-starter-flyway-test")
     testImplementation("org.springframework.boot:spring-boot-starter-jooq-test")
@@ -46,7 +56,6 @@ kotlin {
         freeCompilerArgs.addAll("-Xjsr305=strict", "-Xannotation-default-target=param-property")
     }
 }
-
 
 jooq {
     configuration {
@@ -70,6 +79,13 @@ jooq {
             }
         }
     }
+}
+
+flyway {
+    url = "jdbc:postgresql://localhost:5432/settlement"
+    user = "settlement"
+    password = "settlement"
+    locations = arrayOf("filesystem:src/main/resources/db/migration")
 }
 
 sourceSets {
