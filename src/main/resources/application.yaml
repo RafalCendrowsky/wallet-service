@@ -1,3 +1,7 @@
 spring:
   application:
     name: settlement-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/settlement
+    username: settlement
+    password: settlement
