@@ -7,4 +7,4 @@ create table transfer (
     created_at      timestamp default now()
 );
 
-create index transfer_idempotency_key_idx on transfer(idempotency_key);
+create unique index transfer_idempotency_key_idx on transfer(idempotency_key);
