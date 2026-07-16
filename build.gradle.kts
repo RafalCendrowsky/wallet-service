@@ -31,10 +31,12 @@ buildscript {
 }
 
 dependencies {
+    implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.springframework.boot:spring-boot-starter-jooq")
-    implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("org.springframework.data:spring-data-commons")
     implementation("org.flywaydb:flyway-database-postgresql")
+    implementation("com.fasterxml.uuid:java-uuid-generator:5.2.0")
     runtimeOnly("org.postgresql:postgresql")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
@@ -48,6 +50,7 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
     testImplementation("org.testcontainers:testcontainers-postgresql")
+    testImplementation("io.mockk:mockk:1.13.16")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

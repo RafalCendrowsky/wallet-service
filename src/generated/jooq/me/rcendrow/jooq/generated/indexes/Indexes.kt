@@ -18,4 +18,4 @@ import org.jooq.impl.Internal
 // -------------------------------------------------------------------------
 
 val FLYWAY_SCHEMA_HISTORY_S_IDX: Index = Internal.createIndex(DSL.name("flyway_schema_history_s_idx"), FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY, arrayOf(FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY.SUCCESS), false)
-val TRANSFER_IDEMPOTENCY_KEY_IDX: Index = Internal.createIndex(DSL.name("transfer_idempotency_key_idx"), Transfer.TRANSFER, arrayOf(Transfer.TRANSFER.IDEMPOTENCY_KEY), false)
+val TRANSFER_IDEMPOTENCY_KEY_IDX: Index = Internal.createIndex(DSL.name("transfer_idempotency_key_idx"), Transfer.TRANSFER, arrayOf(Transfer.TRANSFER.IDEMPOTENCY_KEY), true)
