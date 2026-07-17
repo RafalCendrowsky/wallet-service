@@ -4,6 +4,7 @@ import jakarta.validation.Valid
 import me.rcendrow.settlement.api.dto.*
 import me.rcendrow.settlement.application.AccountService
 import me.rcendrow.settlement.application.TransferService
+import me.rcendrow.settlement.domain.AccountStatus
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
@@ -11,12 +12,15 @@ import java.util.*
 
 @RestController
 @RequestMapping("/accounts")
-class AccountController(private val accountService: AccountService, private val transferService: TransferService) {
+class AccountController(
+    private val accountService: AccountService,
+    private val transferService: TransferService,
+) {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun createAccount(@Valid @RequestBody request: CreateAccountRequest): AccountResponse {
-        return accountService.createAccount(request.owner).let { AccountResponse.from(it) }
+        return accountService.createAccount(request.customerId!!).let { AccountResponse.from(it) }
     }
 
     @GetMapping("/{id}")
@@ -26,8 +30,7 @@ class AccountController(private val accountService: AccountService, private val 
 
     @GetMapping("/{id}/balance")
     fun getBalance(@PathVariable id: UUID): BalanceResponse {
-        val balance = accountService.getBalance(id)
-        return BalanceResponse(accountId = id, balance = balance)
+        return accountService.getBalance(id).let { BalanceResponse.from(it) }
     }
 
     @GetMapping("/{id}/transfers")
@@ -38,5 +41,10 @@ class AccountController(private val accountService: AccountService, private val 
     ): PageResponse<TransferResponse> {
         val pageable = PageRequest.of(page, size)
         return transferService.getAccountTransfers(id, pageable).map { TransferResponse.from(it) }.toResponse()
+    }
+
+    @PutMapping("/{id}/status")
+    fun suspendAccount(@PathVariable id: UUID, @RequestParam status: AccountStatus): AccountResponse {
+        return accountService.updateAccountStatus(id, status).let { AccountResponse.from(it) }
     }
 }
