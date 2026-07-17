@@ -5,6 +5,7 @@ package me.rcendrow.jooq.generated.indexes
 
 
 import me.rcendrow.jooq.generated.tables.FlywaySchemaHistory
+import me.rcendrow.jooq.generated.tables.Hold
 import me.rcendrow.jooq.generated.tables.Transfer
 
 import org.jooq.Index
@@ -18,4 +19,5 @@ import org.jooq.impl.Internal
 // -------------------------------------------------------------------------
 
 val FLYWAY_SCHEMA_HISTORY_S_IDX: Index = Internal.createIndex(DSL.name("flyway_schema_history_s_idx"), FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY, arrayOf(FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY.SUCCESS), false)
+val HOLD_ACCOUNT_STATUS_IDX: Index = Internal.createIndex(DSL.name("hold_account_status_idx"), Hold.HOLD, arrayOf(Hold.HOLD.ACCOUNT_ID, Hold.HOLD.STATUS), false)
 val TRANSFER_IDEMPOTENCY_KEY_IDX: Index = Internal.createIndex(DSL.name("transfer_idempotency_key_idx"), Transfer.TRANSFER, arrayOf(Transfer.TRANSFER.IDEMPOTENCY_KEY), true)

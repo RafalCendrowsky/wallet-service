@@ -8,13 +8,22 @@ import java.time.LocalDateTime
 import java.util.UUID
 
 import kotlin.collections.Collection
+import kotlin.collections.List
 
 import me.rcendrow.jooq.generated.Public
+import me.rcendrow.jooq.generated.keys.ACCOUNT_BALANCE__ACCOUNT_BALANCE_ACCOUNT_ID_FKEY
 import me.rcendrow.jooq.generated.keys.ACCOUNT_PKEY
+import me.rcendrow.jooq.generated.keys.ACCOUNT__ACCOUNT_OWNER_ID_FKEY
+import me.rcendrow.jooq.generated.keys.HOLD__HOLD_ACCOUNT_ID_FKEY
 import me.rcendrow.jooq.generated.keys.LEDGER__LEDGER_ACCOUNT_ID_FKEY
+import me.rcendrow.jooq.generated.keys.SYSTEM_ACCOUNT__SYSTEM_ACCOUNT_ACCOUNT_ID_FKEY
 import me.rcendrow.jooq.generated.keys.TRANSFER__TRANSFER_FROM_ACCOUNT_FKEY
 import me.rcendrow.jooq.generated.keys.TRANSFER__TRANSFER_TO_ACCOUNT_FKEY
+import me.rcendrow.jooq.generated.tables.AccountBalance.AccountBalancePath
+import me.rcendrow.jooq.generated.tables.Customer.CustomerPath
+import me.rcendrow.jooq.generated.tables.Hold.HoldPath
 import me.rcendrow.jooq.generated.tables.Ledger.LedgerPath
+import me.rcendrow.jooq.generated.tables.SystemAccount.SystemAccountPath
 import me.rcendrow.jooq.generated.tables.Transfer.TransferPath
 import me.rcendrow.jooq.generated.tables.records.AccountRecord
 
@@ -84,14 +93,24 @@ open class Account(
     val ID: TableField<AccountRecord, UUID?> = createField(DSL.name("id"), SQLDataType.UUID.nullable(false).defaultValue(DSL.field(DSL.raw("uuidv7()"), SQLDataType.UUID)), this, "")
 
     /**
-     * The column <code>public.account.owner</code>.
-     */
-    val OWNER: TableField<AccountRecord, String?> = createField(DSL.name("owner"), SQLDataType.VARCHAR(255).nullable(false), this, "")
-
-    /**
      * The column <code>public.account.created_at</code>.
      */
     val CREATED_AT: TableField<AccountRecord, LocalDateTime?> = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "")
+
+    /**
+     * The column <code>public.account.owner_id</code>.
+     */
+    val OWNER_ID: TableField<AccountRecord, UUID?> = createField(DSL.name("owner_id"), SQLDataType.UUID, this, "")
+
+    /**
+     * The column <code>public.account.status</code>.
+     */
+    val STATUS: TableField<AccountRecord, String?> = createField(DSL.name("status"), SQLDataType.VARCHAR(255).nullable(false).defaultValue(DSL.field(DSL.raw("'ACTIVE'::character varying"), SQLDataType.VARCHAR)), this, "")
+
+    /**
+     * The column <code>public.account.type</code>.
+     */
+    val TYPE: TableField<AccountRecord, String?> = createField(DSL.name("type"), SQLDataType.VARCHAR(255).nullable(false).defaultValue(DSL.field(DSL.raw("'SYSTEM'::character varying"), SQLDataType.VARCHAR)), this, "")
 
     private constructor(alias: Name, aliased: Table<AccountRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<AccountRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
@@ -126,6 +145,53 @@ open class Account(
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
     override fun getPrimaryKey(): UniqueKey<AccountRecord> = ACCOUNT_PKEY
+    override fun getReferences(): List<ForeignKey<AccountRecord, *>> = listOf(ACCOUNT__ACCOUNT_OWNER_ID_FKEY)
+
+    private lateinit var _customer: CustomerPath
+
+    /**
+     * Get the implicit join path to the <code>public.customer</code> table.
+     */
+    fun customer(): CustomerPath {
+        if (!this::_customer.isInitialized)
+            _customer = CustomerPath(this, ACCOUNT__ACCOUNT_OWNER_ID_FKEY, null)
+
+        return _customer;
+    }
+
+    val customer: CustomerPath
+        get(): CustomerPath = customer()
+
+    private lateinit var _accountBalance: AccountBalancePath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.account_balance</code> table
+     */
+    fun accountBalance(): AccountBalancePath {
+        if (!this::_accountBalance.isInitialized)
+            _accountBalance = AccountBalancePath(this, null, ACCOUNT_BALANCE__ACCOUNT_BALANCE_ACCOUNT_ID_FKEY.inverseKey)
+
+        return _accountBalance;
+    }
+
+    val accountBalance: AccountBalancePath
+        get(): AccountBalancePath = accountBalance()
+
+    private lateinit var _hold: HoldPath
+
+    /**
+     * Get the implicit to-many join path to the <code>public.hold</code> table
+     */
+    fun hold(): HoldPath {
+        if (!this::_hold.isInitialized)
+            _hold = HoldPath(this, null, HOLD__HOLD_ACCOUNT_ID_FKEY.inverseKey)
+
+        return _hold;
+    }
+
+    val hold: HoldPath
+        get(): HoldPath = hold()
 
     private lateinit var _ledger: LedgerPath
 
@@ -142,6 +208,22 @@ open class Account(
 
     val ledger: LedgerPath
         get(): LedgerPath = ledger()
+
+    private lateinit var _systemAccount: SystemAccountPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.system_account</code> table
+     */
+    fun systemAccount(): SystemAccountPath {
+        if (!this::_systemAccount.isInitialized)
+            _systemAccount = SystemAccountPath(this, null, SYSTEM_ACCOUNT__SYSTEM_ACCOUNT_ACCOUNT_ID_FKEY.inverseKey)
+
+        return _systemAccount;
+    }
+
+    val systemAccount: SystemAccountPath
+        get(): SystemAccountPath = systemAccount()
 
     private lateinit var _transferFromAccountFkey: TransferPath
 

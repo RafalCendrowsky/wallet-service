@@ -7,8 +7,12 @@ package me.rcendrow.jooq.generated
 import kotlin.collections.List
 
 import me.rcendrow.jooq.generated.tables.Account
+import me.rcendrow.jooq.generated.tables.AccountBalance
+import me.rcendrow.jooq.generated.tables.Customer
 import me.rcendrow.jooq.generated.tables.FlywaySchemaHistory
+import me.rcendrow.jooq.generated.tables.Hold
 import me.rcendrow.jooq.generated.tables.Ledger
+import me.rcendrow.jooq.generated.tables.SystemAccount
 import me.rcendrow.jooq.generated.tables.Transfer
 
 import org.jooq.Catalog
@@ -35,14 +39,34 @@ open class Public : SchemaImpl("public", DefaultCatalog.DEFAULT_CATALOG) {
     val ACCOUNT: Account get() = Account.ACCOUNT
 
     /**
+     * The table <code>public.account_balance</code>.
+     */
+    val ACCOUNT_BALANCE: AccountBalance get() = AccountBalance.ACCOUNT_BALANCE
+
+    /**
+     * The table <code>public.customer</code>.
+     */
+    val CUSTOMER: Customer get() = Customer.CUSTOMER
+
+    /**
      * The table <code>public.flyway_schema_history</code>.
      */
     val FLYWAY_SCHEMA_HISTORY: FlywaySchemaHistory get() = FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY
 
     /**
+     * The table <code>public.hold</code>.
+     */
+    val HOLD: Hold get() = Hold.HOLD
+
+    /**
      * The table <code>public.ledger</code>.
      */
     val LEDGER: Ledger get() = Ledger.LEDGER
+
+    /**
+     * The table <code>public.system_account</code>.
+     */
+    val SYSTEM_ACCOUNT: SystemAccount get() = SystemAccount.SYSTEM_ACCOUNT
 
     /**
      * The table <code>public.transfer</code>.
@@ -53,8 +77,12 @@ open class Public : SchemaImpl("public", DefaultCatalog.DEFAULT_CATALOG) {
 
     override fun getTables(): List<Table<*>> = listOf(
         Account.ACCOUNT,
+        AccountBalance.ACCOUNT_BALANCE,
+        Customer.CUSTOMER,
         FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY,
+        Hold.HOLD,
         Ledger.LEDGER,
+        SystemAccount.SYSTEM_ACCOUNT,
         Transfer.TRANSFER
     )
 }
