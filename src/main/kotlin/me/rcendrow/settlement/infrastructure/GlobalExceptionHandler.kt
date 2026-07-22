@@ -1,8 +1,8 @@
 package me.rcendrow.settlement.infrastructure
 
 import me.rcendrow.settlement.application.exception.AccountStatusException
+import me.rcendrow.settlement.application.exception.HoldStatusException
 import me.rcendrow.settlement.application.exception.InsufficientFundsException
-import me.rcendrow.settlement.application.exception.InvalidAccountStatusTransitionException
 import me.rcendrow.settlement.application.exception.NotFoundException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
@@ -18,7 +18,7 @@ class GlobalExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.message!!)
     }
 
-    @ExceptionHandler(value = [AccountStatusException::class, InvalidAccountStatusTransitionException::class])
+    @ExceptionHandler(AccountStatusException::class, HoldStatusException::class)
     fun handleAccountState(ex: RuntimeException): ProblemDetail {
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, ex.message!!)
     }

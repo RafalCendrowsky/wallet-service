@@ -1,7 +1,7 @@
 package me.rcendrow.settlement.application.exception
 
-import me.rcendrow.settlement.domain.AccountStatus
+import me.rcendrow.settlement.domain.account.AccountStatus
 import java.util.*
 
 class AccountStatusException(accountId: UUID, status: AccountStatus) :
-    RuntimeException("Account $accountId status ${status.name} is invalid for the operation")
+    RuntimeException("Operation not permitted for account $accountId with status ${status.name}")

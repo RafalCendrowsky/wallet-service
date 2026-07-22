@@ -5,6 +5,10 @@ import me.rcendrow.settlement.application.exception.DuplicateIdempotencyKeyExcep
 import me.rcendrow.settlement.application.exception.InsufficientFundsException
 import me.rcendrow.settlement.domain.EntryType
 import me.rcendrow.settlement.domain.Transfer
+import me.rcendrow.settlement.domain.account.Account
+import me.rcendrow.settlement.domain.account.AccountStatus
+import me.rcendrow.settlement.domain.account.CustomerAccount
+import me.rcendrow.settlement.domain.account.ServiceAccountRole
 import me.rcendrow.settlement.persistence.TransferRepository
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -19,7 +23,32 @@ class TransferService(
     private val transferRepository: TransferRepository,
     private val accountService: AccountService,
     private val ledgerService: LedgerService,
+    private val accountBalanceService: AccountBalanceService,
 ) {
+
+    @Transactional
+    fun createDeposit(accountId: UUID, amount: BigDecimal, idempotencyKey: String): Transfer {
+        val account = accountService.getCustomerAccount(accountId)
+        val systemAccount = accountService.getServiceAccountByRole(ServiceAccountRole.EXTERNAL_SETTLEMENT)
+        return createTransfer(
+            fromAccount = systemAccount,
+            toAccount = account,
+            amount = amount,
+            idempotencyKey = idempotencyKey,
+        )
+    }
+
+    @Transactional
+    fun createWithdrawal(accountId: UUID, amount: BigDecimal, idempotencyKey: String): Transfer {
+        val account = accountService.getCustomerAccount(accountId)
+        val systemAccount = accountService.getServiceAccountByRole(ServiceAccountRole.EXTERNAL_SETTLEMENT)
+        return createTransfer(
+            fromAccount = account,
+            toAccount = systemAccount,
+            amount = amount,
+            idempotencyKey = idempotencyKey,
+        )
+    }
 
     @Transactional
     fun createTransfer(
@@ -28,8 +57,24 @@ class TransferService(
         amount: BigDecimal,
         idempotencyKey: String,
     ): Transfer {
-        accountService.lockAccount(fromAccount)
-        accountService.getAccount(toAccount)
+        val from = accountService.getCustomerAccount(fromAccount)
+        val to = accountService.getCustomerAccount(toAccount)
+        return createTransfer(
+            fromAccount = from,
+            toAccount = to,
+            amount = amount,
+            idempotencyKey = idempotencyKey,
+        )
+    }
+
+    private fun createTransfer(
+        fromAccount: Account,
+        toAccount: Account,
+        amount: BigDecimal,
+        idempotencyKey: String,
+    ): Transfer {
+        fromAccount.verifyStatus(AccountStatus.ACTIVE)
+        toAccount.verifyStatusNot(AccountStatus.CLOSED)
 
         if (amount <= BigDecimal.ZERO) {
             throw IllegalArgumentException("Amount must be positive")
@@ -37,13 +82,18 @@ class TransferService(
 
         transferRepository.findByIdempotencyKey(idempotencyKey)?.let { return it }
 
-        ledgerService.findBalance(fromAccount).takeIf { it < amount }
-            ?.let { throw InsufficientFundsException(fromAccount, it, amount) }
+        if (fromAccount is CustomerAccount) {
+            accountService.lockCustomerAccount(fromAccount)
+            val balance = accountBalanceService.findBalance(fromAccount.id)
+            if (balance.availableBalance < amount) {
+                throw InsufficientFundsException(fromAccount.id, balance.availableBalance, amount)
+            }
+        }
 
         val transfer = Transfer(
             id = Generators.timeBasedEpochRandomGenerator().generate(),
-            fromAccount = fromAccount,
-            toAccount = toAccount,
+            fromAccount = fromAccount.id,
+            toAccount = toAccount.id,
             amount = amount,
             idempotencyKey = idempotencyKey,
             createdAt = LocalDateTime.now(),
@@ -58,6 +108,9 @@ class TransferService(
         ledgerService.createEntry(transfer, EntryType.CREDIT)
         ledgerService.createEntry(transfer, EntryType.DEBIT)
 
+        accountBalanceService.sync(fromAccount.id)
+        accountBalanceService.sync(toAccount.id)
+
         return transfer
     }
 
@@ -68,8 +121,13 @@ class TransferService(
     }
 
     @Transactional(readOnly = true)
+    fun getTransferByIdempotencyKey(key: String): Transfer? {
+        return transferRepository.findByIdempotencyKey(key)
+    }
+
+    @Transactional(readOnly = true)
     fun getAccountTransfers(accountId: UUID, pageable: Pageable): Page<Transfer> {
-        accountService.getAccount(accountId)
+        accountService.getCustomerAccount(accountId)
         return transferRepository.findByAccountId(accountId, pageable)
     }
 }

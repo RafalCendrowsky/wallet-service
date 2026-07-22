@@ -4,7 +4,7 @@ import jakarta.validation.Valid
 import me.rcendrow.settlement.api.dto.*
 import me.rcendrow.settlement.application.AccountService
 import me.rcendrow.settlement.application.TransferService
-import me.rcendrow.settlement.domain.AccountStatus
+import me.rcendrow.settlement.domain.account.AccountStatus
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
@@ -25,12 +25,12 @@ class AccountController(
 
     @GetMapping("/{id}")
     fun getAccount(@PathVariable id: UUID): AccountResponse {
-        return accountService.getAccount(id).let { AccountResponse.from(it) }
+        return accountService.getCustomerAccount(id).let { AccountResponse.from(it) }
     }
 
     @GetMapping("/{id}/balance")
-    fun getBalance(@PathVariable id: UUID): BalanceResponse {
-        return accountService.getBalance(id).let { BalanceResponse.from(it) }
+    fun getBalance(@PathVariable id: UUID): AccountBalanceResponse {
+        return accountService.getBalance(id).let { AccountBalanceResponse.from(it) }
     }
 
     @GetMapping("/{id}/transfers")

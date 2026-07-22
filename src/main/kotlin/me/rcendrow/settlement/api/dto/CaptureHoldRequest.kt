@@ -3,7 +3,7 @@ package me.rcendrow.settlement.api.dto
 import jakarta.validation.constraints.NotNull
 import java.util.*
 
-data class CreateAccountRequest(
+data class CaptureHoldRequest(
     @field:NotNull
-    val customerId: UUID?,
+    val toAccount: UUID?,
 )

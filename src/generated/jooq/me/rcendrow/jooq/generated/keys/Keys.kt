@@ -7,18 +7,20 @@ package me.rcendrow.jooq.generated.keys
 import me.rcendrow.jooq.generated.tables.Account
 import me.rcendrow.jooq.generated.tables.AccountBalance
 import me.rcendrow.jooq.generated.tables.Customer
+import me.rcendrow.jooq.generated.tables.CustomerAccount
 import me.rcendrow.jooq.generated.tables.FlywaySchemaHistory
 import me.rcendrow.jooq.generated.tables.Hold
 import me.rcendrow.jooq.generated.tables.Ledger
-import me.rcendrow.jooq.generated.tables.SystemAccount
+import me.rcendrow.jooq.generated.tables.ServiceAccount
 import me.rcendrow.jooq.generated.tables.Transfer
 import me.rcendrow.jooq.generated.tables.records.AccountBalanceRecord
 import me.rcendrow.jooq.generated.tables.records.AccountRecord
+import me.rcendrow.jooq.generated.tables.records.CustomerAccountRecord
 import me.rcendrow.jooq.generated.tables.records.CustomerRecord
 import me.rcendrow.jooq.generated.tables.records.FlywaySchemaHistoryRecord
 import me.rcendrow.jooq.generated.tables.records.HoldRecord
 import me.rcendrow.jooq.generated.tables.records.LedgerRecord
-import me.rcendrow.jooq.generated.tables.records.SystemAccountRecord
+import me.rcendrow.jooq.generated.tables.records.ServiceAccountRecord
 import me.rcendrow.jooq.generated.tables.records.TransferRecord
 
 import org.jooq.ForeignKey
@@ -36,21 +38,25 @@ val ACCOUNT_PKEY: UniqueKey<AccountRecord> = Internal.createUniqueKey(Account.AC
 val ACCOUNT_BALANCE_PKEY: UniqueKey<AccountBalanceRecord> = Internal.createUniqueKey(AccountBalance.ACCOUNT_BALANCE, DSL.name("account_balance_pkey"), arrayOf(AccountBalance.ACCOUNT_BALANCE.ACCOUNT_ID), true)
 val CUSTOMER_EMAIL_KEY: UniqueKey<CustomerRecord> = Internal.createUniqueKey(Customer.CUSTOMER, DSL.name("customer_email_key"), arrayOf(Customer.CUSTOMER.EMAIL), true)
 val CUSTOMER_PKEY: UniqueKey<CustomerRecord> = Internal.createUniqueKey(Customer.CUSTOMER, DSL.name("customer_pkey"), arrayOf(Customer.CUSTOMER.ID), true)
+val CUSTOMER_ACCOUNT_ACCOUNT_ID_CUSTOMER_ID_KEY: UniqueKey<CustomerAccountRecord> = Internal.createUniqueKey(CustomerAccount.CUSTOMER_ACCOUNT, DSL.name("customer_account_account_id_customer_id_key"), arrayOf(CustomerAccount.CUSTOMER_ACCOUNT.ACCOUNT_ID, CustomerAccount.CUSTOMER_ACCOUNT.CUSTOMER_ID), true)
+val CUSTOMER_ACCOUNT_PKEY: UniqueKey<CustomerAccountRecord> = Internal.createUniqueKey(CustomerAccount.CUSTOMER_ACCOUNT, DSL.name("customer_account_pkey"), arrayOf(CustomerAccount.CUSTOMER_ACCOUNT.ACCOUNT_ID), true)
 val FLYWAY_SCHEMA_HISTORY_PK: UniqueKey<FlywaySchemaHistoryRecord> = Internal.createUniqueKey(FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY, DSL.name("flyway_schema_history_pk"), arrayOf(FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY.INSTALLED_RANK), true)
 val HOLD_PKEY: UniqueKey<HoldRecord> = Internal.createUniqueKey(Hold.HOLD, DSL.name("hold_pkey"), arrayOf(Hold.HOLD.ID), true)
 val LEDGER_PKEY: UniqueKey<LedgerRecord> = Internal.createUniqueKey(Ledger.LEDGER, DSL.name("ledger_pkey"), arrayOf(Ledger.LEDGER.ID), true)
-val SYSTEM_ACCOUNT_PKEY: UniqueKey<SystemAccountRecord> = Internal.createUniqueKey(SystemAccount.SYSTEM_ACCOUNT, DSL.name("system_account_pkey"), arrayOf(SystemAccount.SYSTEM_ACCOUNT.ACCOUNT_ID), true)
+val SERVICE_ACCOUNT_PKEY: UniqueKey<ServiceAccountRecord> = Internal.createUniqueKey(ServiceAccount.SERVICE_ACCOUNT, DSL.name("service_account_pkey"), arrayOf(ServiceAccount.SERVICE_ACCOUNT.ACCOUNT_ID), true)
+val UQ_SERVICE_ACCOUNT_ROLE: UniqueKey<ServiceAccountRecord> = Internal.createUniqueKey(ServiceAccount.SERVICE_ACCOUNT, DSL.name("uq_service_account_role"), arrayOf(ServiceAccount.SERVICE_ACCOUNT.ROLE), true)
 val TRANSFER_PKEY: UniqueKey<TransferRecord> = Internal.createUniqueKey(Transfer.TRANSFER, DSL.name("transfer_pkey"), arrayOf(Transfer.TRANSFER.ID), true)
 
 // -------------------------------------------------------------------------
 // FOREIGN KEY definitions
 // -------------------------------------------------------------------------
 
-val ACCOUNT__ACCOUNT_OWNER_ID_FKEY: ForeignKey<AccountRecord, CustomerRecord> = Internal.createForeignKey(Account.ACCOUNT, DSL.name("account_owner_id_fkey"), arrayOf(Account.ACCOUNT.OWNER_ID), me.rcendrow.jooq.generated.keys.CUSTOMER_PKEY, arrayOf(Customer.CUSTOMER.ID), true)
 val ACCOUNT_BALANCE__ACCOUNT_BALANCE_ACCOUNT_ID_FKEY: ForeignKey<AccountBalanceRecord, AccountRecord> = Internal.createForeignKey(AccountBalance.ACCOUNT_BALANCE, DSL.name("account_balance_account_id_fkey"), arrayOf(AccountBalance.ACCOUNT_BALANCE.ACCOUNT_ID), me.rcendrow.jooq.generated.keys.ACCOUNT_PKEY, arrayOf(Account.ACCOUNT.ID), true)
+val CUSTOMER_ACCOUNT__CUSTOMER_ACCOUNT_ACCOUNT_ID_FKEY: ForeignKey<CustomerAccountRecord, AccountRecord> = Internal.createForeignKey(CustomerAccount.CUSTOMER_ACCOUNT, DSL.name("customer_account_account_id_fkey"), arrayOf(CustomerAccount.CUSTOMER_ACCOUNT.ACCOUNT_ID), me.rcendrow.jooq.generated.keys.ACCOUNT_PKEY, arrayOf(Account.ACCOUNT.ID), true)
+val CUSTOMER_ACCOUNT__CUSTOMER_ACCOUNT_CUSTOMER_ID_FKEY: ForeignKey<CustomerAccountRecord, CustomerRecord> = Internal.createForeignKey(CustomerAccount.CUSTOMER_ACCOUNT, DSL.name("customer_account_customer_id_fkey"), arrayOf(CustomerAccount.CUSTOMER_ACCOUNT.CUSTOMER_ID), me.rcendrow.jooq.generated.keys.CUSTOMER_PKEY, arrayOf(Customer.CUSTOMER.ID), true)
 val HOLD__HOLD_ACCOUNT_ID_FKEY: ForeignKey<HoldRecord, AccountRecord> = Internal.createForeignKey(Hold.HOLD, DSL.name("hold_account_id_fkey"), arrayOf(Hold.HOLD.ACCOUNT_ID), me.rcendrow.jooq.generated.keys.ACCOUNT_PKEY, arrayOf(Account.ACCOUNT.ID), true)
 val LEDGER__LEDGER_ACCOUNT_ID_FKEY: ForeignKey<LedgerRecord, AccountRecord> = Internal.createForeignKey(Ledger.LEDGER, DSL.name("ledger_account_id_fkey"), arrayOf(Ledger.LEDGER.ACCOUNT_ID), me.rcendrow.jooq.generated.keys.ACCOUNT_PKEY, arrayOf(Account.ACCOUNT.ID), true)
 val LEDGER__LEDGER_TRANSFER_ID_FKEY: ForeignKey<LedgerRecord, TransferRecord> = Internal.createForeignKey(Ledger.LEDGER, DSL.name("ledger_transfer_id_fkey"), arrayOf(Ledger.LEDGER.TRANSFER_ID), me.rcendrow.jooq.generated.keys.TRANSFER_PKEY, arrayOf(Transfer.TRANSFER.ID), true)
-val SYSTEM_ACCOUNT__SYSTEM_ACCOUNT_ACCOUNT_ID_FKEY: ForeignKey<SystemAccountRecord, AccountRecord> = Internal.createForeignKey(SystemAccount.SYSTEM_ACCOUNT, DSL.name("system_account_account_id_fkey"), arrayOf(SystemAccount.SYSTEM_ACCOUNT.ACCOUNT_ID), me.rcendrow.jooq.generated.keys.ACCOUNT_PKEY, arrayOf(Account.ACCOUNT.ID), true)
+val SERVICE_ACCOUNT__SERVICE_ACCOUNT_ACCOUNT_ID_FKEY: ForeignKey<ServiceAccountRecord, AccountRecord> = Internal.createForeignKey(ServiceAccount.SERVICE_ACCOUNT, DSL.name("service_account_account_id_fkey"), arrayOf(ServiceAccount.SERVICE_ACCOUNT.ACCOUNT_ID), me.rcendrow.jooq.generated.keys.ACCOUNT_PKEY, arrayOf(Account.ACCOUNT.ID), true)
 val TRANSFER__TRANSFER_FROM_ACCOUNT_FKEY: ForeignKey<TransferRecord, AccountRecord> = Internal.createForeignKey(Transfer.TRANSFER, DSL.name("transfer_from_account_fkey"), arrayOf(Transfer.TRANSFER.FROM_ACCOUNT), me.rcendrow.jooq.generated.keys.ACCOUNT_PKEY, arrayOf(Account.ACCOUNT.ID), true)
 val TRANSFER__TRANSFER_TO_ACCOUNT_FKEY: ForeignKey<TransferRecord, AccountRecord> = Internal.createForeignKey(Transfer.TRANSFER, DSL.name("transfer_to_account_fkey"), arrayOf(Transfer.TRANSFER.TO_ACCOUNT), me.rcendrow.jooq.generated.keys.ACCOUNT_PKEY, arrayOf(Account.ACCOUNT.ID), true)

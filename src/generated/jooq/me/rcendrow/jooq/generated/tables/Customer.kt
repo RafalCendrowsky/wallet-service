@@ -11,10 +11,11 @@ import kotlin.collections.Collection
 import kotlin.collections.List
 
 import me.rcendrow.jooq.generated.Public
-import me.rcendrow.jooq.generated.keys.ACCOUNT__ACCOUNT_OWNER_ID_FKEY
+import me.rcendrow.jooq.generated.keys.CUSTOMER_ACCOUNT__CUSTOMER_ACCOUNT_CUSTOMER_ID_FKEY
 import me.rcendrow.jooq.generated.keys.CUSTOMER_EMAIL_KEY
 import me.rcendrow.jooq.generated.keys.CUSTOMER_PKEY
 import me.rcendrow.jooq.generated.tables.Account.AccountPath
+import me.rcendrow.jooq.generated.tables.CustomerAccount.CustomerAccountPath
 import me.rcendrow.jooq.generated.tables.records.CustomerRecord
 
 import org.jooq.Condition
@@ -127,21 +128,28 @@ open class Customer(
     override fun getPrimaryKey(): UniqueKey<CustomerRecord> = CUSTOMER_PKEY
     override fun getUniqueKeys(): List<UniqueKey<CustomerRecord>> = listOf(CUSTOMER_EMAIL_KEY)
 
-    private lateinit var _account: AccountPath
+    private lateinit var _customerAccount: CustomerAccountPath
 
     /**
-     * Get the implicit to-many join path to the <code>public.account</code>
-     * table
+     * Get the implicit to-many join path to the
+     * <code>public.customer_account</code> table
      */
-    fun account(): AccountPath {
-        if (!this::_account.isInitialized)
-            _account = AccountPath(this, null, ACCOUNT__ACCOUNT_OWNER_ID_FKEY.inverseKey)
+    fun customerAccount(): CustomerAccountPath {
+        if (!this::_customerAccount.isInitialized)
+            _customerAccount = CustomerAccountPath(this, null, CUSTOMER_ACCOUNT__CUSTOMER_ACCOUNT_CUSTOMER_ID_FKEY.inverseKey)
 
-        return _account;
+        return _customerAccount;
     }
 
+    val customerAccount: CustomerAccountPath
+        get(): CustomerAccountPath = customerAccount()
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>public.account</code> table
+     */
     val account: AccountPath
-        get(): AccountPath = account()
+        get(): AccountPath = customerAccount().account()
     override fun `as`(alias: String): Customer = Customer(DSL.name(alias), this)
     override fun `as`(alias: Name): Customer = Customer(alias, this)
     override fun `as`(alias: Table<*>): Customer = Customer(alias.qualifiedName, this)

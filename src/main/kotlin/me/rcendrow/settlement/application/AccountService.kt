@@ -1,13 +1,10 @@
 package me.rcendrow.settlement.application
 
 import com.fasterxml.uuid.Generators
-import me.rcendrow.settlement.application.exception.InvalidAccountStatusTransitionException
 import me.rcendrow.settlement.application.exception.NotFoundException
-import me.rcendrow.settlement.domain.Account
-import me.rcendrow.settlement.domain.AccountStatus
-import me.rcendrow.settlement.domain.Balance
-import me.rcendrow.settlement.persistence.AccountRepository
-import me.rcendrow.settlement.persistence.HoldRepository
+import me.rcendrow.settlement.domain.account.*
+import me.rcendrow.settlement.persistence.CustomerAccountRepository
+import me.rcendrow.settlement.persistence.ServiceAccountRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
@@ -15,55 +12,51 @@ import java.util.*
 
 @Service
 class AccountService(
-    private val accountRepository: AccountRepository,
     private val customerService: CustomerService,
-    private val holdRepository: HoldRepository,
     private val accountBalanceService: AccountBalanceService,
+    private val customerAccountRepository: CustomerAccountRepository,
+    private val serviceAccountRepository: ServiceAccountRepository
 ) {
     @Transactional(readOnly = true)
-    fun findAccountsByCustomer(customerId: UUID): List<Account> {
+    fun findAccountsByCustomer(customerId: UUID): List<CustomerAccount> {
         customerService.getCustomer(customerId)
-        return accountRepository.findAllByCustomerId(customerId)
+        return customerAccountRepository.findAllByCustomerId(customerId)
     }
 
     @Transactional(readOnly = true)
-    fun getAccount(id: UUID): Account = findById(id)
+    fun getCustomerAccount(id: UUID): CustomerAccount = findCustomerAccountById(id)
+
+    fun lockCustomerAccount(account: CustomerAccount) {
+        customerAccountRepository.lockAccount(account.id)
+    }
 
     @Transactional
-    fun createAccount(customerId: UUID): Account {
+    fun createAccount(customerId: UUID): CustomerAccount {
         customerService.getCustomer(customerId)
-        return Account(
+        return CustomerAccount(
             id = Generators.timeBasedEpochRandomGenerator().generate(),
             customerId = customerId,
             status = AccountStatus.ACTIVE,
             createdAt = LocalDateTime.now(),
-        ).let { accountRepository.create(it) }
+        ).let { customerAccountRepository.create(it) }
     }
 
     @Transactional(readOnly = true)
-    fun getBalance(id: UUID): Balance {
-        findById(id)
-        val balance = accountBalanceService.findBalance(id)
-        val activeHolds = holdRepository.sumActiveAmount(id)
-        return Balance(
-            accountId = id,
-            balance = balance,
-            availableBalance = balance.subtract(activeHolds),
-        )
+    fun getBalance(id: UUID): AccountBalance {
+        findCustomerAccountById(id)
+        return accountBalanceService.findBalance(id)
     }
 
     @Transactional
-    fun updateAccountStatus(id: UUID, status: AccountStatus): Account {
-        val account = findById(id)
-        if (account.status == AccountStatus.CLOSED) {
-            throw InvalidAccountStatusTransitionException(id, account.status, status)
-        }
-        return accountRepository.updateStatus(id, status)
+    fun updateAccountStatus(id: UUID, status: AccountStatus): CustomerAccount {
+        val account = findCustomerAccountById(id)
+        account.verifyStatusNot(AccountStatus.CLOSED)
+        return customerAccountRepository.updateStatus(account, status)
     }
 
-    fun lockBalance(accountId: UUID) {
-        accountRepository.lockBalance(accountId)
-    }
+    fun getServiceAccountByRole(role: ServiceAccountRole): ServiceAccount =
+        serviceAccountRepository.findByRole(role)
 
-    private fun findById(id: UUID): Account = accountRepository.findById(id) ?: throw NotFoundException("Account", id)
+    private fun findCustomerAccountById(id: UUID): CustomerAccount =
+        customerAccountRepository.findById(id) ?: throw NotFoundException("CustomerAccount", id)
 }

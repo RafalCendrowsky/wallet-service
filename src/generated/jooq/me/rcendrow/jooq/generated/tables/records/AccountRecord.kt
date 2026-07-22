@@ -27,17 +27,13 @@ open class AccountRecord() : UpdatableRecordImpl<AccountRecord>(Account.ACCOUNT)
         set(value): Unit = set(1, value)
         get(): LocalDateTime? = get(1) as LocalDateTime?
 
-    open var ownerId: UUID?
-        set(value): Unit = set(2, value)
-        get(): UUID? = get(2) as UUID?
-
     open var status: String?
-        set(value): Unit = set(3, value)
-        get(): String? = get(3) as String?
+        set(value): Unit = set(2, value)
+        get(): String? = get(2) as String?
 
     open var type: String?
-        set(value): Unit = set(4, value)
-        get(): String? = get(4) as String?
+        set(value): Unit = set(3, value)
+        get(): String? = get(3) as String?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -48,10 +44,9 @@ open class AccountRecord() : UpdatableRecordImpl<AccountRecord>(Account.ACCOUNT)
     /**
      * Create a detached, initialised AccountRecord
      */
-    constructor(id: UUID? = null, createdAt: LocalDateTime? = null, ownerId: UUID? = null, status: String? = null, type: String? = null): this() {
+    constructor(id: UUID? = null, createdAt: LocalDateTime? = null, status: String? = null, type: String? = null): this() {
         this.id = id
         this.createdAt = createdAt
-        this.ownerId = ownerId
         this.status = status
         this.type = type
         resetChangedOnNotNull()
