@@ -1,8 +1,6 @@
 package me.rcendrow.settlement
 
-import me.rcendrow.settlement.api.dto.AccountResponse
-import me.rcendrow.settlement.api.dto.CreateAccountRequest
-import me.rcendrow.settlement.api.dto.CreateTransferRequest
+import me.rcendrow.settlement.api.dto.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
@@ -27,17 +25,29 @@ class SettlementServiceWebTests {
     }
 
     @Test
+    fun `should return 201 when creating customer`() {
+        rest.post()
+            .uri("/customers")
+            .body(CreateCustomerRequest(email = "alice@test.com"))
+            .exchange()
+            .expectStatus().isCreated
+    }
+
+    @Test
     fun `should return 201 when creating account`() {
+        val customerId = createCustomer("account-owner@test.com").id
+
         rest.post()
             .uri("/accounts")
-            .body(CreateAccountRequest(owner = "Alice"))
+            .body(CreateAccountRequest(customerId = customerId))
             .exchange()
             .expectStatus().isCreated
     }
 
     @Test
     fun `should return 200 for existing account`() {
-        val id = createAccount("Bob").id
+        val customerId = createCustomer("existing@test.com").id
+        val id = createAccount(customerId).id
 
         rest.get()
             .uri("/accounts/$id")
@@ -55,8 +65,10 @@ class SettlementServiceWebTests {
 
     @Test
     fun `should return 422 for insufficient funds`() {
-        val senderId = createAccount("Poor").id
-        val receiverId = createAccount("Rich").id
+        val customer1Id = createCustomer("poor@test.com").id
+        val customer2Id = createCustomer("rich@test.com").id
+        val senderId = createAccount(customer1Id).id
+        val receiverId = createAccount(customer2Id).id
 
         rest.post()
             .uri("/transfers")
@@ -66,11 +78,11 @@ class SettlementServiceWebTests {
     }
 
     @Test
-    fun `should return 400 when owner is blank`() {
+    fun `should return 400 when customerId is null`() {
         rest.post()
             .uri("/accounts")
             .contentType(MediaType.APPLICATION_JSON)
-            .body("""{"owner": ""}""")
+            .body("""{"customerId": null}""")
             .exchange()
             .expectStatus().isBadRequest
     }
@@ -87,7 +99,8 @@ class SettlementServiceWebTests {
 
     @Test
     fun `should return 200 for balance endpoint`() {
-        val id = createAccount("Balance").id
+        val customerId = createCustomer("balance-test@test.com").id
+        val id = createAccount(customerId).id
 
         rest.get()
             .uri("/accounts/$id/balance")
@@ -97,7 +110,8 @@ class SettlementServiceWebTests {
 
     @Test
     fun `should return 200 for empty transfer history`() {
-        val id = createAccount("History").id
+        val customerId = createCustomer("history@test.com").id
+        val id = createAccount(customerId).id
 
         rest.get()
             .uri("/accounts/$id/transfers?page=0&size=3")
@@ -105,10 +119,21 @@ class SettlementServiceWebTests {
             .expectStatus().isOk
     }
 
-    private fun createAccount(owner: String): AccountResponse {
+    private fun createCustomer(email: String): CustomerResponse {
+        return rest.post()
+            .uri("/customers")
+            .body(CreateCustomerRequest(email = email))
+            .exchange()
+            .expectStatus().isCreated
+            .expectBody<CustomerResponse>()
+            .returnResult()
+            .responseBody!!
+    }
+
+    private fun createAccount(customerId: UUID): AccountResponse {
         return rest.post()
             .uri("/accounts")
-            .body(CreateAccountRequest(owner))
+            .body(CreateAccountRequest(customerId = customerId))
             .exchange()
             .expectStatus().isCreated
             .expectBody<AccountResponse>()

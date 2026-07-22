@@ -8,6 +8,11 @@ import me.rcendrow.settlement.application.exception.DuplicateIdempotencyKeyExcep
 import me.rcendrow.settlement.application.exception.InsufficientFundsException
 import me.rcendrow.settlement.domain.EntryType
 import me.rcendrow.settlement.domain.Transfer
+import me.rcendrow.settlement.domain.account.AccountBalance
+import me.rcendrow.settlement.domain.account.AccountStatus
+import me.rcendrow.settlement.domain.account.CustomerAccount
+import me.rcendrow.settlement.domain.account.ServiceAccount
+import me.rcendrow.settlement.domain.account.ServiceAccountRole
 import me.rcendrow.settlement.persistence.TransferRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -17,6 +22,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import java.math.BigDecimal
+import java.time.LocalDateTime
 import java.util.*
 
 class TransferServiceTest {
@@ -24,22 +30,34 @@ class TransferServiceTest {
     private val transferRepository: TransferRepository = mockk()
     private val accountService: AccountService = mockk()
     private val ledgerService: LedgerService = mockk()
-    private val service = TransferService(transferRepository, accountService, ledgerService)
+    private val accountBalanceService: AccountBalanceService = mockk()
+    private val service = TransferService(
+        transferRepository,
+        accountService,
+        ledgerService,
+        accountBalanceService
+    )
 
     @AfterEach
     fun tearDown() {
-        clearMocks(transferRepository, accountService, ledgerService)
+        clearMocks(transferRepository, accountService, ledgerService, accountBalanceService)
     }
+
+    private fun activeAccount(id: UUID) = CustomerAccount(
+        id = id, customerId = UUID.randomUUID(), status = AccountStatus.ACTIVE, createdAt = LocalDateTime.now()
+    )
 
     @Test
     fun `should reject zero amount`() {
-        every { accountService.lockAccount(any()) } returns Unit
-        every { accountService.getAccount(any()) } returns mockk()
+        val fromId = UUID.randomUUID()
+        val toId = UUID.randomUUID()
+        every { accountService.getCustomerAccount(fromId) } returns activeAccount(fromId)
+        every { accountService.getCustomerAccount(toId) } returns activeAccount(toId)
 
         assertThatThrownBy {
             service.createTransfer(
-                fromAccount = UUID.randomUUID(),
-                toAccount = UUID.randomUUID(),
+                fromAccount = fromId,
+                toAccount = toId,
                 amount = BigDecimal.ZERO,
                 idempotencyKey = UUID.randomUUID().toString(),
             )
@@ -49,13 +67,15 @@ class TransferServiceTest {
 
     @Test
     fun `should reject negative amount`() {
-        every { accountService.lockAccount(any()) } returns Unit
-        every { accountService.getAccount(any()) } returns mockk()
+        val fromId = UUID.randomUUID()
+        val toId = UUID.randomUUID()
+        every { accountService.getCustomerAccount(fromId) } returns activeAccount(fromId)
+        every { accountService.getCustomerAccount(toId) } returns activeAccount(toId)
 
         assertThatThrownBy {
             service.createTransfer(
-                fromAccount = UUID.randomUUID(),
-                toAccount = UUID.randomUUID(),
+                fromAccount = fromId,
+                toAccount = toId,
                 amount = BigDecimal("-10.00"),
                 idempotencyKey = UUID.randomUUID().toString(),
             )
@@ -64,72 +84,64 @@ class TransferServiceTest {
     }
 
     @Test
-    fun `should lock sender and verify receiver account`() {
-        val fromAccount = UUID.randomUUID()
-        val toAccount = UUID.randomUUID()
-        every { accountService.lockAccount(fromAccount) } returns Unit
-        every { accountService.getAccount(toAccount) } returns mockk()
-        every { transferRepository.findByIdempotencyKey(any()) } returns null
-        every { ledgerService.findBalance(fromAccount) } returns BigDecimal("100.00")
-        every { transferRepository.create(any()) } answers { firstArg() }
-        every { ledgerService.createEntry(any(), EntryType.DEBIT) } returns mockk()
-        every { ledgerService.createEntry(any(), EntryType.CREDIT) } returns mockk()
-
-        service.createTransfer(fromAccount, toAccount, BigDecimal("50.00"), UUID.randomUUID().toString())
-
-        verify { accountService.lockAccount(fromAccount) }
-        verify { accountService.getAccount(toAccount) }
-    }
-
-    @Test
-    fun `should throw InsufficientFundsException when balance is less than amount`() {
-        val fromAccount = UUID.randomUUID()
-        val toAccount = UUID.randomUUID()
-        every { accountService.lockAccount(fromAccount) } returns Unit
-        every { accountService.getAccount(toAccount) } returns mockk()
-        every { transferRepository.findByIdempotencyKey(any()) } returns null
-        every { ledgerService.findBalance(fromAccount) } returns BigDecimal("30.00")
-
-        assertThatThrownBy {
-            service.createTransfer(fromAccount, toAccount, BigDecimal("50.00"), UUID.randomUUID().toString())
-        }.isInstanceOf(InsufficientFundsException::class.java)
-    }
-
-    @Test
     fun `should create transfer when sender has sufficient balance`() {
-        val fromAccount = UUID.randomUUID()
-        val toAccount = UUID.randomUUID()
+        val fromId = UUID.randomUUID()
+        val toId = UUID.randomUUID()
         val key = UUID.randomUUID().toString()
-        every { accountService.lockAccount(fromAccount) } returns Unit
-        every { accountService.getAccount(toAccount) } returns mockk()
+        val from = activeAccount(fromId)
+        val to = activeAccount(toId)
+        every { accountService.getCustomerAccount(fromId) } returns from
+        every { accountService.getCustomerAccount(toId) } returns to
         every { transferRepository.findByIdempotencyKey(key) } returns null
-        every { ledgerService.findBalance(fromAccount) } returns BigDecimal("100.00")
+        every { accountService.lockCustomerAccount(from) } returns Unit
+        every { accountBalanceService.findBalance(fromId) } returns AccountBalance(fromId, BigDecimal("100.00"), BigDecimal.ZERO)
         every { transferRepository.create(any()) } answers { firstArg() }
         every { ledgerService.createEntry(any(), EntryType.DEBIT) } returns mockk()
         every { ledgerService.createEntry(any(), EntryType.CREDIT) } returns mockk()
+        every { accountBalanceService.sync(fromId) } returns Unit
+        every { accountBalanceService.sync(toId) } returns Unit
 
-        val result = service.createTransfer(fromAccount, toAccount, BigDecimal("50.00"), key)
+        val result = service.createTransfer(fromId, toId, BigDecimal("50.00"), key)
 
-        assertThat(result.fromAccount).isEqualTo(fromAccount)
-        assertThat(result.toAccount).isEqualTo(toAccount)
+        assertThat(result.fromAccount).isEqualTo(fromId)
+        assertThat(result.toAccount).isEqualTo(toId)
         assertThat(result.amount).isEqualByComparingTo(BigDecimal("50.00"))
         assertThat(result.idempotencyKey).isEqualTo(key)
         verify { transferRepository.create(any()) }
         verify { ledgerService.createEntry(any(), EntryType.DEBIT) }
         verify { ledgerService.createEntry(any(), EntryType.CREDIT) }
+        verify { accountBalanceService.sync(fromId) }
+        verify { accountBalanceService.sync(toId) }
+    }
+
+    @Test
+    fun `should throw InsufficientFundsException when balance is less than amount`() {
+        val fromId = UUID.randomUUID()
+        val toId = UUID.randomUUID()
+        val from = activeAccount(fromId)
+        val to = activeAccount(toId)
+        every { accountService.getCustomerAccount(fromId) } returns from
+        every { accountService.getCustomerAccount(toId) } returns to
+        every { transferRepository.findByIdempotencyKey(any()) } returns null
+        every { accountService.lockCustomerAccount(from) } returns Unit
+        every { accountBalanceService.findBalance(fromId) } returns AccountBalance(fromId, BigDecimal("30.00"), BigDecimal.ZERO)
+
+        assertThatThrownBy {
+            service.createTransfer(fromId, toId, BigDecimal("50.00"), UUID.randomUUID().toString())
+        }.isInstanceOf(InsufficientFundsException::class.java)
     }
 
     @Test
     fun `should return existing transfer for duplicate idempotency key`() {
-        val fromAccount = UUID.randomUUID()
-        val toAccount = UUID.randomUUID()
+        val fromId = UUID.randomUUID()
+        val toId = UUID.randomUUID()
         val key = UUID.randomUUID().toString()
         val existing = mockk<Transfer>()
-        every { accountService.lockAccount(fromAccount) } returns Unit
-        every { accountService.getAccount(toAccount) } returns mockk()
+        every { accountService.getCustomerAccount(fromId) } returns activeAccount(fromId)
+        every { accountService.getCustomerAccount(toId) } returns activeAccount(toId)
         every { transferRepository.findByIdempotencyKey(key) } returns existing
 
-        val result = service.createTransfer(fromAccount, toAccount, BigDecimal("50.00"), key)
+        val result = service.createTransfer(fromId, toId, BigDecimal("50.00"), key)
 
         assertThat(result).isSameAs(existing)
         verify(exactly = 0) { transferRepository.create(any()) }
@@ -137,20 +149,46 @@ class TransferServiceTest {
 
     @Test
     fun `should return existing transfer when repository throws DuplicateIdempotencyKeyException`() {
-        val fromAccount = UUID.randomUUID()
-        val toAccount = UUID.randomUUID()
+        val fromId = UUID.randomUUID()
+        val toId = UUID.randomUUID()
         val key = UUID.randomUUID().toString()
         val existing = mockk<Transfer>()
-        every { accountService.lockAccount(fromAccount) } returns Unit
-        every { accountService.getAccount(toAccount) } returns mockk()
+        val from = activeAccount(fromId)
+        val to = activeAccount(toId)
+        every { accountService.getCustomerAccount(fromId) } returns from
+        every { accountService.getCustomerAccount(toId) } returns to
+        every { accountService.lockCustomerAccount(from) } returns Unit
+        every { accountBalanceService.findBalance(fromId) } returns AccountBalance(fromId, BigDecimal("100.00"), BigDecimal.ZERO)
         every { transferRepository.findByIdempotencyKey(key) } returns null
-        every { ledgerService.findBalance(fromAccount) } returns BigDecimal("100.00")
         every { transferRepository.create(any()) } throws DuplicateIdempotencyKeyException(key, existing)
 
-        val result = service.createTransfer(fromAccount, toAccount, BigDecimal("50.00"), key)
+        val result = service.createTransfer(fromId, toId, BigDecimal("50.00"), key)
 
         assertThat(result).isSameAs(existing)
         verify(exactly = 0) { ledgerService.createEntry(any(), any()) }
+    }
+
+    @Test
+    fun `should skip balance check for system account deposits`() {
+        val systemAccount = ServiceAccount(
+            id = UUID.fromString("00000000-0000-0000-0000-000000000001"),
+            status = AccountStatus.ACTIVE,
+            createdAt = LocalDateTime.now(),
+            role = ServiceAccountRole.EXTERNAL_SETTLEMENT
+        )
+        val toId = UUID.randomUUID()
+        val to = activeAccount(toId)
+        every { accountService.getServiceAccountByRole(ServiceAccountRole.EXTERNAL_SETTLEMENT) } returns systemAccount
+        every { accountService.getCustomerAccount(toId) } returns to
+        every { transferRepository.findByIdempotencyKey(any()) } returns null
+        every { transferRepository.create(any()) } answers { firstArg() }
+        every { ledgerService.createEntry(any(), EntryType.DEBIT) } returns mockk()
+        every { ledgerService.createEntry(any(), EntryType.CREDIT) } returns mockk()
+        every { accountBalanceService.sync(any()) } returns Unit
+
+        service.createDeposit(toId, BigDecimal("50.00"), UUID.randomUUID().toString())
+
+        verify(exactly = 0) { accountBalanceService.findBalance(systemAccount.id) }
     }
 
     @Test
@@ -171,7 +209,7 @@ class TransferServiceTest {
 
         assertThatThrownBy { service.getTransfer(id) }
             .isInstanceOf(IllegalArgumentException::class.java)
-            .hasMessageContaining("Transfer not found")
+            .hasMessageContaining("not found")
     }
 
     @Test
@@ -179,12 +217,12 @@ class TransferServiceTest {
         val accountId = UUID.randomUUID()
         val pageable = PageRequest.of(0, 10)
         val page: Page<Transfer> = PageImpl(emptyList())
-        every { accountService.getAccount(accountId) } returns mockk()
+        every { accountService.getCustomerAccount(accountId) } returns mockk()
         every { transferRepository.findByAccountId(accountId, pageable) } returns page
 
         val result = service.getAccountTransfers(accountId, pageable)
 
         assertThat(result).isSameAs(page)
-        verify { accountService.getAccount(accountId) }
+        verify { accountService.getCustomerAccount(accountId) }
     }
 }
