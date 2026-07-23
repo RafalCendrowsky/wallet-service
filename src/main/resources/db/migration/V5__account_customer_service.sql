@@ -1,7 +1,7 @@
 alter table account drop column owner;
 alter table account
-    add column status varchar(255) not null default 'ACTIVE',
-    add column type varchar(255) not null default 'SERVICE';
+    add column status   varchar(255) not null default 'ACTIVE',
+    add column type     varchar(255) not null default 'SERVICE';
 
 create table customer_account (
     account_id  uuid primary key references account(id),
