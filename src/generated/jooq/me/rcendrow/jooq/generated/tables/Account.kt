@@ -10,19 +10,21 @@ import java.util.UUID
 import kotlin.collections.Collection
 
 import me.rcendrow.jooq.generated.Public
+import me.rcendrow.jooq.generated.keys.ACCOUNT_BALANCE_QUEUE__ACCOUNT_BALANCE_QUEUE_ACCOUNT_ID_FKEY
 import me.rcendrow.jooq.generated.keys.ACCOUNT_BALANCE__ACCOUNT_BALANCE_ACCOUNT_ID_FKEY
 import me.rcendrow.jooq.generated.keys.ACCOUNT_PKEY
 import me.rcendrow.jooq.generated.keys.CUSTOMER_ACCOUNT__CUSTOMER_ACCOUNT_ACCOUNT_ID_FKEY
 import me.rcendrow.jooq.generated.keys.HOLD__HOLD_ACCOUNT_ID_FKEY
-import me.rcendrow.jooq.generated.keys.LEDGER__LEDGER_ACCOUNT_ID_FKEY
+import me.rcendrow.jooq.generated.keys.LEDGER_ENTRY__LEDGER_ACCOUNT_ID_FKEY
 import me.rcendrow.jooq.generated.keys.SERVICE_ACCOUNT__SERVICE_ACCOUNT_ACCOUNT_ID_FKEY
 import me.rcendrow.jooq.generated.keys.TRANSFER__TRANSFER_FROM_ACCOUNT_FKEY
 import me.rcendrow.jooq.generated.keys.TRANSFER__TRANSFER_TO_ACCOUNT_FKEY
 import me.rcendrow.jooq.generated.tables.AccountBalance.AccountBalancePath
+import me.rcendrow.jooq.generated.tables.AccountBalanceQueue.AccountBalanceQueuePath
 import me.rcendrow.jooq.generated.tables.Customer.CustomerPath
 import me.rcendrow.jooq.generated.tables.CustomerAccount.CustomerAccountPath
 import me.rcendrow.jooq.generated.tables.Hold.HoldPath
-import me.rcendrow.jooq.generated.tables.Ledger.LedgerPath
+import me.rcendrow.jooq.generated.tables.LedgerEntry.LedgerEntryPath
 import me.rcendrow.jooq.generated.tables.ServiceAccount.ServiceAccountPath
 import me.rcendrow.jooq.generated.tables.Transfer.TransferPath
 import me.rcendrow.jooq.generated.tables.records.AccountRecord
@@ -157,6 +159,22 @@ open class Account(
     val accountBalance: AccountBalancePath
         get(): AccountBalancePath = accountBalance()
 
+    private lateinit var _accountBalanceQueue: AccountBalanceQueuePath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.account_balance_queue</code> table
+     */
+    fun accountBalanceQueue(): AccountBalanceQueuePath {
+        if (!this::_accountBalanceQueue.isInitialized)
+            _accountBalanceQueue = AccountBalanceQueuePath(this, null, ACCOUNT_BALANCE_QUEUE__ACCOUNT_BALANCE_QUEUE_ACCOUNT_ID_FKEY.inverseKey)
+
+        return _accountBalanceQueue;
+    }
+
+    val accountBalanceQueue: AccountBalanceQueuePath
+        get(): AccountBalanceQueuePath = accountBalanceQueue()
+
     private lateinit var _customerAccount: CustomerAccountPath
 
     /**
@@ -188,21 +206,21 @@ open class Account(
     val hold: HoldPath
         get(): HoldPath = hold()
 
-    private lateinit var _ledger: LedgerPath
+    private lateinit var _ledgerEntry: LedgerEntryPath
 
     /**
-     * Get the implicit to-many join path to the <code>public.ledger</code>
-     * table
+     * Get the implicit to-many join path to the
+     * <code>public.ledger_entry</code> table
      */
-    fun ledger(): LedgerPath {
-        if (!this::_ledger.isInitialized)
-            _ledger = LedgerPath(this, null, LEDGER__LEDGER_ACCOUNT_ID_FKEY.inverseKey)
+    fun ledgerEntry(): LedgerEntryPath {
+        if (!this::_ledgerEntry.isInitialized)
+            _ledgerEntry = LedgerEntryPath(this, null, LEDGER_ENTRY__LEDGER_ACCOUNT_ID_FKEY.inverseKey)
 
-        return _ledger;
+        return _ledgerEntry;
     }
 
-    val ledger: LedgerPath
-        get(): LedgerPath = ledger()
+    val ledgerEntry: LedgerEntryPath
+        get(): LedgerEntryPath = ledgerEntry()
 
     private lateinit var _serviceAccount: ServiceAccountPath
 

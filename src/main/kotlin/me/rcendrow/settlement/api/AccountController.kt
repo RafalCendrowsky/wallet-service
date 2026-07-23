@@ -20,7 +20,7 @@ class AccountController(
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun createAccount(@Valid @RequestBody request: CreateAccountRequest): AccountResponse {
-        return accountService.createAccount(request.customerId!!).let { AccountResponse.from(it) }
+        return accountService.createCustomerAccount(request.customerId!!).let { AccountResponse.from(it) }
     }
 
     @GetMapping("/{id}")

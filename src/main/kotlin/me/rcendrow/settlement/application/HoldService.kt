@@ -3,7 +3,6 @@ package me.rcendrow.settlement.application
 import com.fasterxml.uuid.Generators
 import me.rcendrow.settlement.application.exception.AccountStatusException
 import me.rcendrow.settlement.application.exception.HoldStatusException
-import me.rcendrow.settlement.application.exception.InsufficientFundsException
 import me.rcendrow.settlement.application.exception.NotFoundException
 import me.rcendrow.settlement.domain.Hold
 import me.rcendrow.settlement.domain.HoldStatus
@@ -21,7 +20,6 @@ import java.util.*
 class HoldService(
     private val holdRepository: HoldRepository,
     private val accountService: AccountService,
-    private val accountBalanceService: AccountBalanceService,
     private val transferService: TransferService,
 ) {
 
@@ -31,14 +29,7 @@ class HoldService(
         if (account.status != AccountStatus.ACTIVE) {
             throw AccountStatusException(accountId, account.status)
         }
-
-        accountService.lockCustomerAccount(account)
-
-        val balance = accountBalanceService.findBalance(accountId)
-
-        if (balance.availableBalance < amount) {
-            throw InsufficientFundsException(accountId, balance.availableBalance, amount)
-        }
+        accountService.lockAndVerifyBalance(account, amount)
 
         return Hold(
             id = Generators.timeBasedEpochRandomGenerator().generate(),

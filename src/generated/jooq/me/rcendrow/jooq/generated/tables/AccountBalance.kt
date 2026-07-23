@@ -14,7 +14,9 @@ import kotlin.collections.List
 import me.rcendrow.jooq.generated.Public
 import me.rcendrow.jooq.generated.keys.ACCOUNT_BALANCE_PKEY
 import me.rcendrow.jooq.generated.keys.ACCOUNT_BALANCE__ACCOUNT_BALANCE_ACCOUNT_ID_FKEY
+import me.rcendrow.jooq.generated.keys.ACCOUNT_BALANCE__ACCOUNT_BALANCE_LAST_ENTRY_ID_FKEY
 import me.rcendrow.jooq.generated.tables.Account.AccountPath
+import me.rcendrow.jooq.generated.tables.LedgerEntry.LedgerEntryPath
 import me.rcendrow.jooq.generated.tables.records.AccountBalanceRecord
 
 import org.jooq.Condition
@@ -92,6 +94,11 @@ open class AccountBalance(
      */
     val UPDATED_AT: TableField<AccountBalanceRecord, LocalDateTime?> = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "")
 
+    /**
+     * The column <code>public.account_balance.last_entry_id</code>.
+     */
+    val LAST_ENTRY_ID: TableField<AccountBalanceRecord, UUID?> = createField(DSL.name("last_entry_id"), SQLDataType.UUID, this, "")
+
     private constructor(alias: Name, aliased: Table<AccountBalanceRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<AccountBalanceRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<AccountBalanceRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -125,7 +132,7 @@ open class AccountBalance(
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
     override fun getPrimaryKey(): UniqueKey<AccountBalanceRecord> = ACCOUNT_BALANCE_PKEY
-    override fun getReferences(): List<ForeignKey<AccountBalanceRecord, *>> = listOf(ACCOUNT_BALANCE__ACCOUNT_BALANCE_ACCOUNT_ID_FKEY)
+    override fun getReferences(): List<ForeignKey<AccountBalanceRecord, *>> = listOf(ACCOUNT_BALANCE__ACCOUNT_BALANCE_ACCOUNT_ID_FKEY, ACCOUNT_BALANCE__ACCOUNT_BALANCE_LAST_ENTRY_ID_FKEY)
 
     private lateinit var _account: AccountPath
 
@@ -141,6 +148,21 @@ open class AccountBalance(
 
     val account: AccountPath
         get(): AccountPath = account()
+
+    private lateinit var _ledgerEntry: LedgerEntryPath
+
+    /**
+     * Get the implicit join path to the <code>public.ledger_entry</code> table.
+     */
+    fun ledgerEntry(): LedgerEntryPath {
+        if (!this::_ledgerEntry.isInitialized)
+            _ledgerEntry = LedgerEntryPath(this, ACCOUNT_BALANCE__ACCOUNT_BALANCE_LAST_ENTRY_ID_FKEY, null)
+
+        return _ledgerEntry;
+    }
+
+    val ledgerEntry: LedgerEntryPath
+        get(): LedgerEntryPath = ledgerEntry()
     override fun `as`(alias: String): AccountBalance = AccountBalance(DSL.name(alias), this)
     override fun `as`(alias: Name): AccountBalance = AccountBalance(alias, this)
     override fun `as`(alias: Table<*>): AccountBalance = AccountBalance(alias.qualifiedName, this)

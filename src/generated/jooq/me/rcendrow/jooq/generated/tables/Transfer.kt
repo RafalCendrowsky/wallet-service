@@ -13,12 +13,12 @@ import kotlin.collections.List
 
 import me.rcendrow.jooq.generated.Public
 import me.rcendrow.jooq.generated.indexes.TRANSFER_IDEMPOTENCY_KEY_IDX
-import me.rcendrow.jooq.generated.keys.LEDGER__LEDGER_TRANSFER_ID_FKEY
+import me.rcendrow.jooq.generated.keys.LEDGER_ENTRY__LEDGER_TRANSFER_ID_FKEY
 import me.rcendrow.jooq.generated.keys.TRANSFER_PKEY
 import me.rcendrow.jooq.generated.keys.TRANSFER__TRANSFER_FROM_ACCOUNT_FKEY
 import me.rcendrow.jooq.generated.keys.TRANSFER__TRANSFER_TO_ACCOUNT_FKEY
 import me.rcendrow.jooq.generated.tables.Account.AccountPath
-import me.rcendrow.jooq.generated.tables.Ledger.LedgerPath
+import me.rcendrow.jooq.generated.tables.LedgerEntry.LedgerEntryPath
 import me.rcendrow.jooq.generated.tables.records.TransferRecord
 
 import org.jooq.Condition
@@ -180,21 +180,21 @@ open class Transfer(
     val transferToAccountFkey: AccountPath
         get(): AccountPath = transferToAccountFkey()
 
-    private lateinit var _ledger: LedgerPath
+    private lateinit var _ledgerEntry: LedgerEntryPath
 
     /**
-     * Get the implicit to-many join path to the <code>public.ledger</code>
-     * table
+     * Get the implicit to-many join path to the
+     * <code>public.ledger_entry</code> table
      */
-    fun ledger(): LedgerPath {
-        if (!this::_ledger.isInitialized)
-            _ledger = LedgerPath(this, null, LEDGER__LEDGER_TRANSFER_ID_FKEY.inverseKey)
+    fun ledgerEntry(): LedgerEntryPath {
+        if (!this::_ledgerEntry.isInitialized)
+            _ledgerEntry = LedgerEntryPath(this, null, LEDGER_ENTRY__LEDGER_TRANSFER_ID_FKEY.inverseKey)
 
-        return _ledger;
+        return _ledgerEntry;
     }
 
-    val ledger: LedgerPath
-        get(): LedgerPath = ledger()
+    val ledgerEntry: LedgerEntryPath
+        get(): LedgerEntryPath = ledgerEntry()
     override fun `as`(alias: String): Transfer = Transfer(DSL.name(alias), this)
     override fun `as`(alias: Name): Transfer = Transfer(alias, this)
     override fun `as`(alias: Table<*>): Transfer = Transfer(alias.qualifiedName, this)

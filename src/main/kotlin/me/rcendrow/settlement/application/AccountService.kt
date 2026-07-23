@@ -1,12 +1,15 @@
 package me.rcendrow.settlement.application
 
 import com.fasterxml.uuid.Generators
+import me.rcendrow.settlement.application.exception.InsufficientFundsException
 import me.rcendrow.settlement.application.exception.NotFoundException
 import me.rcendrow.settlement.domain.account.*
-import me.rcendrow.settlement.persistence.CustomerAccountRepository
-import me.rcendrow.settlement.persistence.ServiceAccountRepository
+import me.rcendrow.settlement.persistence.account.AccountBalanceRepository
+import me.rcendrow.settlement.persistence.account.CustomerAccountRepository
+import me.rcendrow.settlement.persistence.account.ServiceAccountRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.*
 
@@ -15,7 +18,8 @@ class AccountService(
     private val customerService: CustomerService,
     private val accountBalanceService: AccountBalanceService,
     private val customerAccountRepository: CustomerAccountRepository,
-    private val serviceAccountRepository: ServiceAccountRepository
+    private val serviceAccountRepository: ServiceAccountRepository,
+    private val accountBalanceRepository: AccountBalanceRepository,
 ) {
     @Transactional(readOnly = true)
     fun findAccountsByCustomer(customerId: UUID): List<CustomerAccount> {
@@ -26,19 +30,28 @@ class AccountService(
     @Transactional(readOnly = true)
     fun getCustomerAccount(id: UUID): CustomerAccount = findCustomerAccountById(id)
 
-    fun lockCustomerAccount(account: CustomerAccount) {
-        customerAccountRepository.lockAccount(account.id)
-    }
-
     @Transactional
-    fun createAccount(customerId: UUID): CustomerAccount {
+    fun createCustomerAccount(customerId: UUID): CustomerAccount {
         customerService.getCustomer(customerId)
         return CustomerAccount(
             id = Generators.timeBasedEpochRandomGenerator().generate(),
             customerId = customerId,
             status = AccountStatus.ACTIVE,
             createdAt = LocalDateTime.now(),
-        ).let { customerAccountRepository.create(it) }
+        ).let {
+            customerAccountRepository.create(it)
+            accountBalanceRepository.create(it.id)
+            it
+        }
+    }
+
+    @Transactional
+    fun lockAndVerifyBalance(account: CustomerAccount, amount: BigDecimal) {
+        customerAccountRepository.lockAccount(account.id)
+        val balance = accountBalanceService.findBalance(account.id)
+        if (balance.availableBalance < amount) {
+            throw InsufficientFundsException(account.id, balance.availableBalance, amount)
+        }
     }
 
     @Transactional(readOnly = true)

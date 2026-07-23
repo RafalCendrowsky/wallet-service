@@ -25,23 +25,26 @@ class HoldServiceTest {
 
     private val holdRepository: HoldRepository = mockk()
     private val accountService: AccountService = mockk()
-    private val accountBalanceService: AccountBalanceService = mockk()
     private val transferService: TransferService = mockk()
-    private val service = HoldService(holdRepository, accountService, accountBalanceService, transferService)
+    private val service = HoldService(holdRepository, accountService, transferService)
 
     @AfterEach
     fun tearDown() {
-        clearMocks(holdRepository, accountService, accountBalanceService, transferService)
+        clearMocks(holdRepository, accountService, transferService)
     }
 
     @Test
     fun `should place hold when sufficient available balance`() {
         val accountId = UUID.randomUUID()
         val expiresAt = LocalDateTime.now().plusDays(1)
-        val account = CustomerAccount(id = accountId, customerId = UUID.randomUUID(), status = AccountStatus.ACTIVE, createdAt = LocalDateTime.now())
+        val account = CustomerAccount(
+            id = accountId,
+            customerId = UUID.randomUUID(),
+            status = AccountStatus.ACTIVE,
+            createdAt = LocalDateTime.now()
+        )
         every { accountService.getCustomerAccount(accountId) } returns account
-        every { accountService.lockCustomerAccount(account) } returns Unit
-        every { accountBalanceService.findBalance(accountId) } returns AccountBalance(accountId, BigDecimal("100.00"), BigDecimal("20.00"))
+        every { accountService.lockAndVerifyBalance(account, BigDecimal("30.00")) } returns Unit
         every { holdRepository.create(any()) } answers { firstArg() }
 
         val result = service.placeHold(accountId, BigDecimal("30.00"), expiresAt)
@@ -56,7 +59,12 @@ class HoldServiceTest {
     @Test
     fun `should reject hold for non-active account`() {
         val accountId = UUID.randomUUID()
-        val account = CustomerAccount(id = accountId, customerId = UUID.randomUUID(), status = AccountStatus.SUSPENDED, createdAt = LocalDateTime.now())
+        val account = CustomerAccount(
+            id = accountId,
+            customerId = UUID.randomUUID(),
+            status = AccountStatus.SUSPENDED,
+            createdAt = LocalDateTime.now()
+        )
         every { accountService.getCustomerAccount(accountId) } returns account
 
         assertThatThrownBy {
@@ -67,10 +75,15 @@ class HoldServiceTest {
     @Test
     fun `should reject hold when available balance insufficient`() {
         val accountId = UUID.randomUUID()
-        val account = CustomerAccount(id = accountId, customerId = UUID.randomUUID(), status = AccountStatus.ACTIVE, createdAt = LocalDateTime.now())
+        val account = CustomerAccount(
+            id = accountId,
+            customerId = UUID.randomUUID(),
+            status = AccountStatus.ACTIVE,
+            createdAt = LocalDateTime.now()
+        )
         every { accountService.getCustomerAccount(accountId) } returns account
-        every { accountService.lockCustomerAccount(account) } returns Unit
-        every { accountBalanceService.findBalance(accountId) } returns AccountBalance(accountId, BigDecimal("50.00"), BigDecimal("30.00"))
+        every { accountService.lockAndVerifyBalance(account, BigDecimal("30.00")) } throws
+            InsufficientFundsException(accountId, BigDecimal("20.00"), BigDecimal("30.00"))
 
         assertThatThrownBy {
             service.placeHold(accountId, BigDecimal("30.00"), LocalDateTime.now().plusDays(1))

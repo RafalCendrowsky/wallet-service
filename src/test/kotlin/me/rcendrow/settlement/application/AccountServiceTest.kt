@@ -5,12 +5,14 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import me.rcendrow.settlement.application.exception.AccountStatusException
+import me.rcendrow.settlement.application.exception.InsufficientFundsException
 import me.rcendrow.settlement.application.exception.NotFoundException
 import me.rcendrow.settlement.domain.account.AccountBalance
 import me.rcendrow.settlement.domain.account.AccountStatus
 import me.rcendrow.settlement.domain.account.CustomerAccount
-import me.rcendrow.settlement.persistence.CustomerAccountRepository
-import me.rcendrow.settlement.persistence.ServiceAccountRepository
+import me.rcendrow.settlement.persistence.account.AccountBalanceRepository
+import me.rcendrow.settlement.persistence.account.CustomerAccountRepository
+import me.rcendrow.settlement.persistence.account.ServiceAccountRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
@@ -25,15 +27,18 @@ class AccountServiceTest {
     private val serviceAccountRepository: ServiceAccountRepository = mockk()
     private val customerService: CustomerService = mockk()
     private val accountBalanceService: AccountBalanceService = mockk()
+    private val accountBalanceRepository: AccountBalanceRepository = mockk()
     private val service =
-        AccountService(customerService, accountBalanceService, customerAccountRepository, serviceAccountRepository)
+        AccountService(customerService, accountBalanceService, customerAccountRepository, serviceAccountRepository, accountBalanceRepository)
 
     @AfterEach
     fun tearDown() {
         clearMocks(
             customerAccountRepository,
+            serviceAccountRepository,
             customerService,
-            accountBalanceService
+            accountBalanceService,
+            accountBalanceRepository
         )
     }
 
@@ -42,14 +47,16 @@ class AccountServiceTest {
         val customerId = UUID.randomUUID()
         every { customerService.getCustomer(customerId) } returns mockk()
         every { customerAccountRepository.create(any()) } answers { firstArg() }
+        every { accountBalanceRepository.create(any()) } returns Unit
 
-        val result = service.createAccount(customerId)
+        val result = service.createCustomerAccount(customerId)
 
         assertThat(result.customerId).isEqualTo(customerId)
         assertThat(result.status).isEqualTo(AccountStatus.ACTIVE)
         assertThat(result.id).isNotNull
         assertThat(result.createdAt).isNotNull
         verify { customerAccountRepository.create(result) }
+        verify { accountBalanceRepository.create(result.id) }
     }
 
     @Test
@@ -250,5 +257,48 @@ class AccountServiceTest {
         val result = service.updateAccountStatus(id, AccountStatus.ACTIVE)
 
         assertThat(result.status).isEqualTo(AccountStatus.ACTIVE)
+    }
+
+    @Test
+    fun `should pass verification when balance is sufficient`() {
+        val accountId = UUID.randomUUID()
+        val account = CustomerAccount(
+            id = accountId,
+            customerId = UUID.randomUUID(),
+            status = AccountStatus.ACTIVE,
+            createdAt = LocalDateTime.now()
+        )
+        every { customerAccountRepository.lockAccount(accountId) } returns Unit
+        every { accountBalanceService.findBalance(accountId) } returns AccountBalance(
+            accountId = accountId,
+            balance = BigDecimal("100.00"),
+            activeHolds = BigDecimal.ZERO
+        )
+
+        service.lockAndVerifyBalance(account, BigDecimal("50.00"))
+
+        verify { customerAccountRepository.lockAccount(accountId) }
+        verify { accountBalanceService.findBalance(accountId) }
+    }
+
+    @Test
+    fun `should throw InsufficientFundsException when balance is insufficient`() {
+        val accountId = UUID.randomUUID()
+        val account = CustomerAccount(
+            id = accountId,
+            customerId = UUID.randomUUID(),
+            status = AccountStatus.ACTIVE,
+            createdAt = LocalDateTime.now()
+        )
+        every { customerAccountRepository.lockAccount(accountId) } returns Unit
+        every { accountBalanceService.findBalance(accountId) } returns AccountBalance(
+            accountId = accountId,
+            balance = BigDecimal("30.00"),
+            activeHolds = BigDecimal.ZERO
+        )
+
+        assertThatThrownBy {
+            service.lockAndVerifyBalance(account, BigDecimal("50.00"))
+        }.isInstanceOf(InsufficientFundsException::class.java)
     }
 }

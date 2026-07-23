@@ -1,29 +1,28 @@
 package me.rcendrow.settlement.application
 
 import com.fasterxml.uuid.Generators
-import me.rcendrow.settlement.domain.EntryType
 import me.rcendrow.settlement.domain.LedgerEntry
 import me.rcendrow.settlement.domain.Transfer
-import me.rcendrow.settlement.persistence.LedgerRepository
+import me.rcendrow.settlement.persistence.LedgerEntryRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.util.*
 
 @Service
-class LedgerService(private val ledgerRepository: LedgerRepository) {
-
-    @Transactional(readOnly = true)
-    fun findBalance(accountId: UUID) = ledgerRepository.findBalance(accountId)
+class LedgerService(private val ledgerEntryRepository: LedgerEntryRepository) {
 
     @Transactional
-    fun createEntry(transfer: Transfer, type: EntryType): LedgerEntry {
+    fun createDebitEntry(transfer: Transfer): LedgerEntry = createEntry(transfer, true)
+
+    @Transactional
+    fun createCreditEntry(transfer: Transfer): LedgerEntry = createEntry(transfer, false)
+
+    private fun createEntry(transfer: Transfer, debit: Boolean): LedgerEntry {
         return LedgerEntry(
             id = Generators.timeBasedEpochRandomGenerator().generate(),
             transferId = transfer.id,
-            accountId = if (type == EntryType.DEBIT) transfer.fromAccount else transfer.toAccount,
-            type = type,
-            amount = transfer.amount,
+            accountId = if (debit) transfer.fromAccount else transfer.toAccount,
+            amount = if (debit) -transfer.amount else transfer.amount,
             createdAt = transfer.createdAt
-        ).let { ledgerRepository.create(it) }
+        ).let { ledgerEntryRepository.create(it) }
     }
 }

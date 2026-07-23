@@ -6,9 +6,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import me.rcendrow.settlement.application.exception.DuplicateIdempotencyKeyException
 import me.rcendrow.settlement.application.exception.InsufficientFundsException
-import me.rcendrow.settlement.domain.EntryType
 import me.rcendrow.settlement.domain.Transfer
-import me.rcendrow.settlement.domain.account.AccountBalance
 import me.rcendrow.settlement.domain.account.AccountStatus
 import me.rcendrow.settlement.domain.account.CustomerAccount
 import me.rcendrow.settlement.domain.account.ServiceAccount
@@ -93,13 +91,10 @@ class TransferServiceTest {
         every { accountService.getCustomerAccount(fromId) } returns from
         every { accountService.getCustomerAccount(toId) } returns to
         every { transferRepository.findByIdempotencyKey(key) } returns null
-        every { accountService.lockCustomerAccount(from) } returns Unit
-        every { accountBalanceService.findBalance(fromId) } returns AccountBalance(fromId, BigDecimal("100.00"), BigDecimal.ZERO)
+        every { accountService.lockAndVerifyBalance(from, BigDecimal("50.00")) } returns Unit
         every { transferRepository.create(any()) } answers { firstArg() }
-        every { ledgerService.createEntry(any(), EntryType.DEBIT) } returns mockk()
-        every { ledgerService.createEntry(any(), EntryType.CREDIT) } returns mockk()
-        every { accountBalanceService.sync(fromId) } returns Unit
-        every { accountBalanceService.sync(toId) } returns Unit
+        every { ledgerService.createCreditEntry(any()) } returns mockk()
+        every { ledgerService.createDebitEntry(any()) } returns mockk()
 
         val result = service.createTransfer(fromId, toId, BigDecimal("50.00"), key)
 
@@ -108,10 +103,10 @@ class TransferServiceTest {
         assertThat(result.amount).isEqualByComparingTo(BigDecimal("50.00"))
         assertThat(result.idempotencyKey).isEqualTo(key)
         verify { transferRepository.create(any()) }
-        verify { ledgerService.createEntry(any(), EntryType.DEBIT) }
-        verify { ledgerService.createEntry(any(), EntryType.CREDIT) }
-        verify { accountBalanceService.sync(fromId) }
-        verify { accountBalanceService.sync(toId) }
+        verify { ledgerService.createCreditEntry(any()) }
+        verify { ledgerService.createDebitEntry(any()) }
+        verify { accountBalanceService.markAccountForRefresh(fromId) }
+        verify { accountBalanceService.markAccountForRefresh(toId) }
     }
 
     @Test
@@ -123,8 +118,8 @@ class TransferServiceTest {
         every { accountService.getCustomerAccount(fromId) } returns from
         every { accountService.getCustomerAccount(toId) } returns to
         every { transferRepository.findByIdempotencyKey(any()) } returns null
-        every { accountService.lockCustomerAccount(from) } returns Unit
-        every { accountBalanceService.findBalance(fromId) } returns AccountBalance(fromId, BigDecimal("30.00"), BigDecimal.ZERO)
+        every { accountService.lockAndVerifyBalance(from, BigDecimal("50.00")) } throws
+                InsufficientFundsException(fromId, BigDecimal("30.00"), BigDecimal("50.00"))
 
         assertThatThrownBy {
             service.createTransfer(fromId, toId, BigDecimal("50.00"), UUID.randomUUID().toString())
@@ -157,15 +152,15 @@ class TransferServiceTest {
         val to = activeAccount(toId)
         every { accountService.getCustomerAccount(fromId) } returns from
         every { accountService.getCustomerAccount(toId) } returns to
-        every { accountService.lockCustomerAccount(from) } returns Unit
-        every { accountBalanceService.findBalance(fromId) } returns AccountBalance(fromId, BigDecimal("100.00"), BigDecimal.ZERO)
         every { transferRepository.findByIdempotencyKey(key) } returns null
+        every { accountService.lockAndVerifyBalance(from, BigDecimal("50.00")) } returns Unit
         every { transferRepository.create(any()) } throws DuplicateIdempotencyKeyException(key, existing)
 
         val result = service.createTransfer(fromId, toId, BigDecimal("50.00"), key)
 
         assertThat(result).isSameAs(existing)
-        verify(exactly = 0) { ledgerService.createEntry(any(), any()) }
+        verify(exactly = 0) { ledgerService.createCreditEntry(any()) }
+        verify(exactly = 0) { ledgerService.createDebitEntry(any()) }
     }
 
     @Test
@@ -182,9 +177,8 @@ class TransferServiceTest {
         every { accountService.getCustomerAccount(toId) } returns to
         every { transferRepository.findByIdempotencyKey(any()) } returns null
         every { transferRepository.create(any()) } answers { firstArg() }
-        every { ledgerService.createEntry(any(), EntryType.DEBIT) } returns mockk()
-        every { ledgerService.createEntry(any(), EntryType.CREDIT) } returns mockk()
-        every { accountBalanceService.sync(any()) } returns Unit
+        every { ledgerService.createCreditEntry(any()) } returns mockk()
+        every { ledgerService.createDebitEntry(any()) } returns mockk()
 
         service.createDeposit(toId, BigDecimal("50.00"), UUID.randomUUID().toString())
 

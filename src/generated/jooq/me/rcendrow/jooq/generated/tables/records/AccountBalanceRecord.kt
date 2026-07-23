@@ -32,6 +32,10 @@ open class AccountBalanceRecord() : UpdatableRecordImpl<AccountBalanceRecord>(Ac
         set(value): Unit = set(2, value)
         get(): LocalDateTime? = get(2) as LocalDateTime?
 
+    open var lastEntryId: UUID?
+        set(value): Unit = set(3, value)
+        get(): UUID? = get(3) as UUID?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -41,10 +45,11 @@ open class AccountBalanceRecord() : UpdatableRecordImpl<AccountBalanceRecord>(Ac
     /**
      * Create a detached, initialised AccountBalanceRecord
      */
-    constructor(accountId: UUID? = null, balance: BigDecimal? = null, updatedAt: LocalDateTime? = null): this() {
+    constructor(accountId: UUID? = null, balance: BigDecimal? = null, updatedAt: LocalDateTime? = null, lastEntryId: UUID? = null): this() {
         this.accountId = accountId
         this.balance = balance
         this.updatedAt = updatedAt
+        this.lastEntryId = lastEntryId
         resetChangedOnNotNull()
     }
 }

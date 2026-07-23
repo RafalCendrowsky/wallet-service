@@ -4,9 +4,8 @@ import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import me.rcendrow.settlement.domain.EntryType
 import me.rcendrow.settlement.domain.Transfer
-import me.rcendrow.settlement.persistence.LedgerRepository
+import me.rcendrow.settlement.persistence.LedgerEntryRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -16,12 +15,12 @@ import java.util.*
 
 class LedgerServiceTest {
 
-    private val ledgerRepository: LedgerRepository = mockk()
-    private val service = LedgerService(ledgerRepository)
+    private val ledgerEntryRepository: LedgerEntryRepository = mockk()
+    private val service = LedgerService(ledgerEntryRepository)
 
     @AfterEach
     fun tearDown() {
-        clearMocks(ledgerRepository)
+        clearMocks(ledgerEntryRepository)
     }
 
     @Test
@@ -34,15 +33,14 @@ class LedgerServiceTest {
             idempotencyKey = UUID.randomUUID().toString(),
             createdAt = LocalDateTime.now(),
         )
-        every { ledgerRepository.create(any()) } answers { firstArg() }
+        every { ledgerEntryRepository.create(any()) } answers { firstArg() }
 
-        val result = service.createEntry(transfer, EntryType.DEBIT)
+        val result = service.createDebitEntry(transfer)
 
         assertThat(result.accountId).isEqualTo(transfer.fromAccount)
         assertThat(result.transferId).isEqualTo(transfer.id)
-        assertThat(result.type).isEqualTo(EntryType.DEBIT)
-        assertThat(result.amount).isEqualByComparingTo(transfer.amount)
-        verify { ledgerRepository.create(result) }
+        assertThat(result.amount).isEqualByComparingTo(transfer.amount.negate())
+        verify { ledgerEntryRepository.create(result) }
     }
 
     @Test
@@ -55,14 +53,13 @@ class LedgerServiceTest {
             idempotencyKey = UUID.randomUUID().toString(),
             createdAt = LocalDateTime.now(),
         )
-        every { ledgerRepository.create(any()) } answers { firstArg() }
+        every { ledgerEntryRepository.create(any()) } answers { firstArg() }
 
-        val result = service.createEntry(transfer, EntryType.CREDIT)
+        val result = service.createCreditEntry(transfer)
 
         assertThat(result.accountId).isEqualTo(transfer.toAccount)
         assertThat(result.transferId).isEqualTo(transfer.id)
-        assertThat(result.type).isEqualTo(EntryType.CREDIT)
         assertThat(result.amount).isEqualByComparingTo(transfer.amount)
-        verify { ledgerRepository.create(result) }
+        verify { ledgerEntryRepository.create(result) }
     }
 }

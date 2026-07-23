@@ -1,4 +1,4 @@
-package me.rcendrow.settlement.persistence
+package me.rcendrow.settlement.persistence.account
 
 import me.rcendrow.jooq.generated.tables.Account.Companion.ACCOUNT
 import me.rcendrow.jooq.generated.tables.references.CUSTOMER_ACCOUNT

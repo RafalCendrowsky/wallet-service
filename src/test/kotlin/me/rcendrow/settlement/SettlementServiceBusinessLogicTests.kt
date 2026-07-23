@@ -1,7 +1,9 @@
 package me.rcendrow.settlement
 
 import me.rcendrow.jooq.generated.tables.Account.Companion.ACCOUNT
-import me.rcendrow.jooq.generated.tables.Ledger.Companion.LEDGER
+import me.rcendrow.jooq.generated.tables.AccountBalance.Companion.ACCOUNT_BALANCE
+import me.rcendrow.jooq.generated.tables.AccountBalanceQueue.Companion.ACCOUNT_BALANCE_QUEUE
+import me.rcendrow.jooq.generated.tables.LedgerEntry.Companion.LEDGER_ENTRY
 import me.rcendrow.jooq.generated.tables.ServiceAccount.Companion.SERVICE_ACCOUNT
 import me.rcendrow.jooq.generated.tables.Transfer.Companion.TRANSFER
 import me.rcendrow.settlement.application.*
@@ -46,6 +48,9 @@ class SettlementServiceBusinessLogicTests {
     private lateinit var holdService: HoldService
 
     @Autowired
+    private lateinit var accountBalanceService: AccountBalanceService
+
+    @Autowired
     private lateinit var db: DSLContext
 
     @Autowired
@@ -67,6 +72,10 @@ class SettlementServiceBusinessLogicTests {
                 db.insertInto(SERVICE_ACCOUNT)
                     .set(SERVICE_ACCOUNT.ACCOUNT_ID, record[ACCOUNT.ID])
                     .set(SERVICE_ACCOUNT.ROLE, ServiceAccountRole.EXTERNAL_SETTLEMENT.name)
+                    .execute()
+                db.insertInto(ACCOUNT_BALANCE)
+                    .set(ACCOUNT_BALANCE.ACCOUNT_ID, record[ACCOUNT.ID])
+                    .set(ACCOUNT_BALANCE.BALANCE, BigDecimal.ZERO)
                     .execute()
             }
         }
@@ -108,7 +117,7 @@ class SettlementServiceBusinessLogicTests {
     fun `should create account`() {
         val customer = customerService.createCustomer("account-test@test.com")
 
-        val account = accountService.createAccount(customer.id)
+        val account = accountService.createCustomerAccount(customer.id)
 
         assertThat(account.id).isNotNull
         assertThat(account.customerId).isEqualTo(customer.id)
@@ -118,7 +127,7 @@ class SettlementServiceBusinessLogicTests {
     @Test
     fun `should get account by id`() {
         val customer = customerService.createCustomer("get-account@test.com")
-        val created = accountService.createAccount(customer.id)
+        val created = accountService.createCustomerAccount(customer.id)
 
         val account = accountService.getCustomerAccount(created.id)
 
@@ -134,7 +143,7 @@ class SettlementServiceBusinessLogicTests {
     @Test
     fun `should deposit money and update balance`() {
         val customer = customerService.createCustomer("deposit@test.com")
-        val account = accountService.createAccount(customer.id)
+        val account = accountService.createCustomerAccount(customer.id)
 
         transferService.createDeposit(account.id, BigDecimal("100.00"), UUID.randomUUID().toString())
 
@@ -145,8 +154,8 @@ class SettlementServiceBusinessLogicTests {
     @Test
     fun `should transfer money between accounts`() {
         val customer = customerService.createCustomer("transfer-test@test.com")
-        val sender = accountService.createAccount(customer.id)
-        val receiver = accountService.createAccount(customer.id)
+        val sender = accountService.createCustomerAccount(customer.id)
+        val receiver = accountService.createCustomerAccount(customer.id)
         transferService.createDeposit(sender.id, BigDecimal("100.00"), UUID.randomUUID().toString())
 
         transferService.createTransfer(sender.id, receiver.id, BigDecimal("50.00"), UUID.randomUUID().toString())
@@ -157,17 +166,23 @@ class SettlementServiceBusinessLogicTests {
         val receiverBalance = accountService.getBalance(receiver.id)
         assertThat(receiverBalance.balance).isEqualByComparingTo(BigDecimal("50.00"))
 
-        val debitCount = db.fetchCount(LEDGER, LEDGER.ACCOUNT_ID.eq(sender.id).and(LEDGER.TYPE.eq("DEBIT")))
-        val creditCount = db.fetchCount(LEDGER, LEDGER.ACCOUNT_ID.eq(receiver.id).and(LEDGER.TYPE.eq("CREDIT")))
-        assertThat(debitCount).isOne()
-        assertThat(creditCount).isOne()
+        val debitCount = db.fetchCount(
+            LEDGER_ENTRY,
+            LEDGER_ENTRY.ACCOUNT_ID.eq(sender.id).and(LEDGER_ENTRY.AMOUNT.lt(BigDecimal.ZERO))
+        )
+        val creditCount = db.fetchCount(
+            LEDGER_ENTRY,
+            LEDGER_ENTRY.ACCOUNT_ID.eq(receiver.id).and(LEDGER_ENTRY.AMOUNT.gt(BigDecimal.ZERO))
+        )
+        assertThat(debitCount).isEqualTo(1)
+        assertThat(creditCount).isEqualTo(1)
     }
 
     @Test
     fun `should reject transfer with insufficient funds`() {
         val customer = customerService.createCustomer("insufficient@test.com")
-        val sender = accountService.createAccount(customer.id)
-        val receiver = accountService.createAccount(customer.id)
+        val sender = accountService.createCustomerAccount(customer.id)
+        val receiver = accountService.createCustomerAccount(customer.id)
 
         assertThatThrownBy {
             transferService.createTransfer(sender.id, receiver.id, BigDecimal("1.00"), UUID.randomUUID().toString())
@@ -177,8 +192,8 @@ class SettlementServiceBusinessLogicTests {
     @Test
     fun `should reject duplicate idempotency key`() {
         val customer = customerService.createCustomer("dup-test@test.com")
-        val sender = accountService.createAccount(customer.id)
-        val receiver = accountService.createAccount(customer.id)
+        val sender = accountService.createCustomerAccount(customer.id)
+        val receiver = accountService.createCustomerAccount(customer.id)
         transferService.createDeposit(sender.id, BigDecimal("100.00"), UUID.randomUUID().toString())
         val key = UUID.randomUUID().toString()
 
@@ -194,8 +209,8 @@ class SettlementServiceBusinessLogicTests {
     @Test
     fun `should rollback entire transfer on failure`() {
         val customer = customerService.createCustomer("rollback@test.com")
-        val sender = accountService.createAccount(customer.id)
-        val receiver = accountService.createAccount(customer.id)
+        val sender = accountService.createCustomerAccount(customer.id)
+        val receiver = accountService.createCustomerAccount(customer.id)
         val key = UUID.randomUUID().toString()
 
         assertThatThrownBy {
@@ -203,15 +218,17 @@ class SettlementServiceBusinessLogicTests {
         }
 
         val transferExists = db.fetchExists(TRANSFER, TRANSFER.IDEMPOTENCY_KEY.eq(key))
+        val ledgerEntryExists = db.fetchExists(LEDGER_ENTRY, LEDGER_ENTRY.ACCOUNT_ID.eq(sender.id))
         assertThat(transferExists).isFalse()
+        assertThat(ledgerEntryExists).isFalse()
     }
 
     @Test
     fun `should prevent double spending from concurrent requests`() {
         val customer = customerService.createCustomer("concurrent@test.com")
-        val sender = accountService.createAccount(customer.id)
-        val receiver1 = accountService.createAccount(customer.id)
-        val receiver2 = accountService.createAccount(customer.id)
+        val sender = accountService.createCustomerAccount(customer.id)
+        val receiver1 = accountService.createCustomerAccount(customer.id)
+        val receiver2 = accountService.createCustomerAccount(customer.id)
         transferService.createDeposit(sender.id, BigDecimal("100.00"), UUID.randomUUID().toString())
 
         val pool = Executors.newFixedThreadPool(2)
@@ -246,8 +263,8 @@ class SettlementServiceBusinessLogicTests {
     @Test
     fun `should return correct balance after multiple transfers`() {
         val customer = customerService.createCustomer("balance-multi@test.com")
-        val sender = accountService.createAccount(customer.id)
-        val receiver = accountService.createAccount(customer.id)
+        val sender = accountService.createCustomerAccount(customer.id)
+        val receiver = accountService.createCustomerAccount(customer.id)
         transferService.createDeposit(sender.id, BigDecimal("200.00"), UUID.randomUUID().toString())
 
         transferService.createTransfer(sender.id, receiver.id, BigDecimal("70.00"), UUID.randomUUID().toString())
@@ -259,8 +276,8 @@ class SettlementServiceBusinessLogicTests {
     @Test
     fun `should return paginated transaction history`() {
         val customer = customerService.createCustomer("pagination@test.com")
-        val sender = accountService.createAccount(customer.id)
-        val receiver = accountService.createAccount(customer.id)
+        val sender = accountService.createCustomerAccount(customer.id)
+        val receiver = accountService.createCustomerAccount(customer.id)
         transferService.createDeposit(sender.id, BigDecimal("1000.00"), UUID.randomUUID().toString())
 
         val keys = (1..5).map { UUID.randomUUID().toString() }
@@ -277,7 +294,7 @@ class SettlementServiceBusinessLogicTests {
     @Test
     fun `should return zero balance for new account`() {
         val customer = customerService.createCustomer("zero-balance@test.com")
-        val account = accountService.createAccount(customer.id)
+        val account = accountService.createCustomerAccount(customer.id)
 
         val balance = accountService.getBalance(account.id)
         assertThat(balance.balance).isEqualByComparingTo(BigDecimal.ZERO)
@@ -286,7 +303,7 @@ class SettlementServiceBusinessLogicTests {
     @Test
     fun `should place and release hold`() {
         val customer = customerService.createCustomer("hold-test@test.com")
-        val account = accountService.createAccount(customer.id)
+        val account = accountService.createCustomerAccount(customer.id)
         transferService.createDeposit(account.id, BigDecimal("100.00"), UUID.randomUUID().toString())
 
         val hold = holdService.placeHold(account.id, BigDecimal("30.00"), LocalDateTime.now().plusDays(1))
@@ -308,7 +325,7 @@ class SettlementServiceBusinessLogicTests {
     @Test
     fun `should reject hold when insufficient available balance`() {
         val customer = customerService.createCustomer("hold-insufficient@test.com")
-        val account = accountService.createAccount(customer.id)
+        val account = accountService.createCustomerAccount(customer.id)
 
         assertThatThrownBy {
             holdService.placeHold(account.id, BigDecimal("30.00"), LocalDateTime.now().plusDays(1))
@@ -318,8 +335,8 @@ class SettlementServiceBusinessLogicTests {
     @Test
     fun `should capture hold and create transfer`() {
         val customer = customerService.createCustomer("hold-capture@test.com")
-        val sender = accountService.createAccount(customer.id)
-        val receiver = accountService.createAccount(customer.id)
+        val sender = accountService.createCustomerAccount(customer.id)
+        val receiver = accountService.createCustomerAccount(customer.id)
         transferService.createDeposit(sender.id, BigDecimal("100.00"), UUID.randomUUID().toString())
 
         val hold = holdService.placeHold(sender.id, BigDecimal("50.00"), LocalDateTime.now().plusDays(1))
@@ -328,5 +345,99 @@ class SettlementServiceBusinessLogicTests {
         assertThat(transfer.amount).isEqualByComparingTo(BigDecimal("50.00"))
         assertThat(transfer.fromAccount).isEqualTo(sender.id)
         assertThat(transfer.toAccount).isEqualTo(receiver.id)
+    }
+
+    @Test
+    fun `should refresh a single account balance from queue`() {
+        val customer = customerService.createCustomer("refresh-single@test.com")
+        val account = accountService.createCustomerAccount(customer.id)
+        transferService.createDeposit(account.id, BigDecimal("100.00"), UUID.randomUUID().toString())
+
+        val lastEntryId = db.select(LEDGER_ENTRY.ID)
+            .from(LEDGER_ENTRY)
+            .where(LEDGER_ENTRY.ACCOUNT_ID.eq(account.id))
+            .orderBy(LEDGER_ENTRY.ID.desc())
+            .limit(1)
+            .fetchSingleInto(UUID::class.java)
+
+        accountBalanceService.refreshBalance()
+
+        val ab = db.selectFrom(ACCOUNT_BALANCE)
+            .where(ACCOUNT_BALANCE.ACCOUNT_ID.eq(account.id))
+            .fetchSingle()
+        assertThat(ab[ACCOUNT_BALANCE.BALANCE]).isEqualByComparingTo(BigDecimal("100.00"))
+        assertThat(ab[ACCOUNT_BALANCE.LAST_ENTRY_ID]).isEqualTo(lastEntryId)
+
+        val queueCount = db.fetchCount(ACCOUNT_BALANCE_QUEUE, ACCOUNT_BALANCE_QUEUE.ACCOUNT_ID.eq(account.id))
+        assertThat(queueCount).isZero()
+
+        val balance = accountService.getBalance(account.id)
+        assertThat(balance.balance).isEqualByComparingTo(BigDecimal("100.00"))
+    }
+
+    @Test
+    fun `should refresh balances incrementally`() {
+        val customer = customerService.createCustomer("refresh-incremental@test.com")
+        val account = accountService.createCustomerAccount(customer.id)
+        transferService.createDeposit(account.id, BigDecimal("100.00"), UUID.randomUUID().toString())
+
+        accountBalanceService.refreshBalance()
+
+        var ab = db.selectFrom(ACCOUNT_BALANCE)
+            .where(ACCOUNT_BALANCE.ACCOUNT_ID.eq(account.id))
+            .fetchSingle()
+        assertThat(ab[ACCOUNT_BALANCE.BALANCE]).isEqualByComparingTo(BigDecimal("100.00"))
+
+        val firstLastEntryId = ab[ACCOUNT_BALANCE.LAST_ENTRY_ID]
+
+        transferService.createDeposit(account.id, BigDecimal("50.00"), UUID.randomUUID().toString())
+
+        val secondLastEntryId = db.select(LEDGER_ENTRY.ID)
+            .from(LEDGER_ENTRY)
+            .where(LEDGER_ENTRY.ACCOUNT_ID.eq(account.id))
+            .orderBy(LEDGER_ENTRY.ID.desc())
+            .limit(1)
+            .fetchSingleInto(UUID::class.java)
+        
+        accountBalanceService.refreshBalance()
+
+        ab = db.selectFrom(ACCOUNT_BALANCE)
+            .where(ACCOUNT_BALANCE.ACCOUNT_ID.eq(account.id))
+            .fetchSingle()
+        assertThat(ab[ACCOUNT_BALANCE.BALANCE]).isEqualByComparingTo(BigDecimal("150.00"))
+        assertThat(ab[ACCOUNT_BALANCE.LAST_ENTRY_ID]).isEqualTo(secondLastEntryId)
+        assertThat(ab[ACCOUNT_BALANCE.LAST_ENTRY_ID]).isNotEqualTo(firstLastEntryId)
+
+        val balance = accountService.getBalance(account.id)
+        assertThat(balance.balance).isEqualByComparingTo(BigDecimal("150.00"))
+    }
+
+    @Test
+    fun `should refresh multiple accounts in one batch`() {
+        val customer = customerService.createCustomer("refresh-multi@test.com")
+        val account1 = accountService.createCustomerAccount(customer.id)
+        val account2 = accountService.createCustomerAccount(customer.id)
+        transferService.createDeposit(account1.id, BigDecimal("100.00"), UUID.randomUUID().toString())
+        transferService.createDeposit(account2.id, BigDecimal("200.00"), UUID.randomUUID().toString())
+
+        accountBalanceService.refreshBalance()
+
+        val ab1 = db.selectFrom(ACCOUNT_BALANCE)
+            .where(ACCOUNT_BALANCE.ACCOUNT_ID.eq(account1.id))
+            .fetchSingle()
+        assertThat(ab1[ACCOUNT_BALANCE.BALANCE]).isEqualByComparingTo(BigDecimal("100.00"))
+
+        val ab2 = db.selectFrom(ACCOUNT_BALANCE)
+            .where(ACCOUNT_BALANCE.ACCOUNT_ID.eq(account2.id))
+            .fetchSingle()
+        assertThat(ab2[ACCOUNT_BALANCE.BALANCE]).isEqualByComparingTo(BigDecimal("200.00"))
+
+        val queueCount = db.fetchCount(ACCOUNT_BALANCE_QUEUE)
+        assertThat(queueCount).isZero()
+    }
+
+    @Test
+    fun `should not crash when balance queue is empty`() {
+        accountBalanceService.refreshBalance()
     }
 }

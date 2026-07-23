@@ -8,7 +8,6 @@ data class LedgerEntry(
     val id: UUID,
     val transferId: UUID,
     val accountId: UUID,
-    val type: EntryType,
     val amount: BigDecimal,
     val createdAt: LocalDateTime,
 )

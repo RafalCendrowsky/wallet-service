@@ -6,11 +6,12 @@ package me.rcendrow.jooq.generated.tables.references
 
 import me.rcendrow.jooq.generated.tables.Account
 import me.rcendrow.jooq.generated.tables.AccountBalance
+import me.rcendrow.jooq.generated.tables.AccountBalanceQueue
 import me.rcendrow.jooq.generated.tables.Customer
 import me.rcendrow.jooq.generated.tables.CustomerAccount
 import me.rcendrow.jooq.generated.tables.FlywaySchemaHistory
 import me.rcendrow.jooq.generated.tables.Hold
-import me.rcendrow.jooq.generated.tables.Ledger
+import me.rcendrow.jooq.generated.tables.LedgerEntry
 import me.rcendrow.jooq.generated.tables.ServiceAccount
 import me.rcendrow.jooq.generated.tables.Transfer
 
@@ -25,6 +26,11 @@ val ACCOUNT: Account = Account.ACCOUNT
  * The table <code>public.account_balance</code>.
  */
 val ACCOUNT_BALANCE: AccountBalance = AccountBalance.ACCOUNT_BALANCE
+
+/**
+ * The table <code>public.account_balance_queue</code>.
+ */
+val ACCOUNT_BALANCE_QUEUE: AccountBalanceQueue = AccountBalanceQueue.ACCOUNT_BALANCE_QUEUE
 
 /**
  * The table <code>public.customer</code>.
@@ -47,9 +53,9 @@ val FLYWAY_SCHEMA_HISTORY: FlywaySchemaHistory = FlywaySchemaHistory.FLYWAY_SCHE
 val HOLD: Hold = Hold.HOLD
 
 /**
- * The table <code>public.ledger</code>.
+ * The table <code>public.ledger_entry</code>.
  */
-val LEDGER: Ledger = Ledger.LEDGER
+val LEDGER_ENTRY: LedgerEntry = LedgerEntry.LEDGER_ENTRY
 
 /**
  * The table <code>public.service_account</code>.

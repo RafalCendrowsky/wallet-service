@@ -1,9 +1,10 @@
 package me.rcendrow.settlement.application
 
 import me.rcendrow.settlement.domain.account.AccountBalance
-import me.rcendrow.settlement.persistence.AccountBalanceRepository
 import me.rcendrow.settlement.persistence.HoldRepository
-import me.rcendrow.settlement.persistence.LedgerRepository
+import me.rcendrow.settlement.persistence.account.AccountBalanceQueueRepository
+import me.rcendrow.settlement.persistence.account.AccountBalanceRepository
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.*
@@ -11,26 +12,24 @@ import java.util.*
 @Service
 class AccountBalanceService(
     private val accountBalanceRepository: AccountBalanceRepository,
-    private val ledgerRepository: LedgerRepository,
+    private val accountBalanceQueueRepository: AccountBalanceQueueRepository,
     private val holdRepository: HoldRepository
 ) {
 
-    @Transactional
-    fun sync(accountId: UUID) {
-        val balance = ledgerRepository.findBalance(accountId)
-        accountBalanceRepository.upsert(accountId, balance)
+    fun markAccountForRefresh(accountId: UUID) {
+        accountBalanceQueueRepository.insert(accountId)
     }
 
     @Transactional(readOnly = true)
     fun findBalance(accountId: UUID): AccountBalance {
-        val balance = accountBalanceRepository.findBalance(accountId) ?: ledgerRepository.findBalance(accountId)
+        val balance = accountBalanceRepository.findCurrentBalance(accountId)
         val activeHolds = holdRepository.sumActiveAmount(accountId)
         return AccountBalance(accountId, balance, activeHolds)
     }
 
+    @Scheduled(fixedDelay = 100)
     @Transactional
-    fun rebuild() {
-        val allBalances = ledgerRepository.findAllBalances()
-        accountBalanceRepository.rebuildBalances(allBalances)
+    fun refreshBalance() {
+        accountBalanceQueueRepository.claimOldestBatch(1000).let { accountBalanceRepository.refreshBalances(it) }
     }
 }

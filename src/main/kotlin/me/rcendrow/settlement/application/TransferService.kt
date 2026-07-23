@@ -2,8 +2,6 @@ package me.rcendrow.settlement.application
 
 import com.fasterxml.uuid.Generators
 import me.rcendrow.settlement.application.exception.DuplicateIdempotencyKeyException
-import me.rcendrow.settlement.application.exception.InsufficientFundsException
-import me.rcendrow.settlement.domain.EntryType
 import me.rcendrow.settlement.domain.Transfer
 import me.rcendrow.settlement.domain.account.Account
 import me.rcendrow.settlement.domain.account.AccountStatus
@@ -83,11 +81,7 @@ class TransferService(
         transferRepository.findByIdempotencyKey(idempotencyKey)?.let { return it }
 
         if (fromAccount is CustomerAccount) {
-            accountService.lockCustomerAccount(fromAccount)
-            val balance = accountBalanceService.findBalance(fromAccount.id)
-            if (balance.availableBalance < amount) {
-                throw InsufficientFundsException(fromAccount.id, balance.availableBalance, amount)
-            }
+            accountService.lockAndVerifyBalance(fromAccount, amount)
         }
 
         val transfer = Transfer(
@@ -105,12 +99,11 @@ class TransferService(
             return e.existing
         }
 
-        ledgerService.createEntry(transfer, EntryType.CREDIT)
-        ledgerService.createEntry(transfer, EntryType.DEBIT)
+        ledgerService.createCreditEntry(transfer)
+        ledgerService.createDebitEntry(transfer)
 
-        accountBalanceService.sync(fromAccount.id)
-        accountBalanceService.sync(toAccount.id)
-
+        accountBalanceService.markAccountForRefresh(fromAccount.id)
+        accountBalanceService.markAccountForRefresh(toAccount.id)
         return transfer
     }
 
