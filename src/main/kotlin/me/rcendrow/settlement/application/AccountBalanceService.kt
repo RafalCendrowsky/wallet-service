@@ -4,7 +4,6 @@ import me.rcendrow.settlement.domain.account.AccountBalance
 import me.rcendrow.settlement.persistence.HoldRepository
 import me.rcendrow.settlement.persistence.account.AccountBalanceQueueRepository
 import me.rcendrow.settlement.persistence.account.AccountBalanceRepository
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.*
@@ -27,9 +26,11 @@ class AccountBalanceService(
         return AccountBalance(accountId, balance, activeHolds)
     }
 
-    @Scheduled(fixedDelay = 100)
     @Transactional
-    fun refreshBalance() {
-        accountBalanceQueueRepository.claimOldestBatch(1000).let { accountBalanceRepository.refreshBalances(it) }
+    fun refreshBalance(batchSize: Int) {
+        val batch = accountBalanceQueueRepository.claimOldestBatch(batchSize)
+        if (batch.isNotEmpty()) {
+            accountBalanceRepository.refreshBalances(batch)
+        }
     }
 }

@@ -29,7 +29,13 @@ class AccountServiceTest {
     private val accountBalanceService: AccountBalanceService = mockk()
     private val accountBalanceRepository: AccountBalanceRepository = mockk()
     private val service =
-        AccountService(customerService, accountBalanceService, customerAccountRepository, serviceAccountRepository, accountBalanceRepository)
+        AccountService(
+            customerService,
+            accountBalanceService,
+            customerAccountRepository,
+            serviceAccountRepository,
+            accountBalanceRepository
+        )
 
     @AfterEach
     fun tearDown() {
@@ -62,13 +68,7 @@ class AccountServiceTest {
     @Test
     fun `should return account by id`() {
         val id = UUID.randomUUID()
-        val account =
-            CustomerAccount(
-                id = id,
-                customerId = UUID.randomUUID(),
-                status = AccountStatus.ACTIVE,
-                createdAt = LocalDateTime.now()
-            )
+        val account = accountWithStatus(AccountStatus.ACTIVE)
         every { customerAccountRepository.findById(id) } returns account
 
         val result = service.getCustomerAccount(id)
@@ -87,22 +87,15 @@ class AccountServiceTest {
 
     @Test
     fun `should return balance with available balance`() {
-        val id = UUID.randomUUID()
-        val account =
-            CustomerAccount(
-                id = id,
-                customerId = UUID.randomUUID(),
-                status = AccountStatus.ACTIVE,
-                createdAt = LocalDateTime.now()
-            )
-        every { customerAccountRepository.findById(id) } returns account
-        every { accountBalanceService.findBalance(id) } returns AccountBalance(
-            accountId = id,
+        val account = accountWithStatus(AccountStatus.ACTIVE)
+        every { customerAccountRepository.findById(account.id) } returns account
+        every { accountBalanceService.findBalance(account.id) } returns AccountBalance(
+            accountId = account.id,
             balance = BigDecimal("100.00"),
             activeHolds = BigDecimal("30.00")
         )
 
-        val result = service.getBalance(id)
+        val result = service.getBalance(account.id)
 
         assertThat(result.balance).isEqualByComparingTo(BigDecimal("100.00"))
         assertThat(result.availableBalance).isEqualByComparingTo(BigDecimal("70.00"))
@@ -110,15 +103,8 @@ class AccountServiceTest {
 
     @Test
     fun `should suspend active account`() {
-        val id = UUID.randomUUID()
-        val account =
-            CustomerAccount(
-                id = id,
-                customerId = UUID.randomUUID(),
-                status = AccountStatus.ACTIVE,
-                createdAt = LocalDateTime.now()
-            )
-        every { customerAccountRepository.findById(id) } returns account
+        val account = accountWithStatus(AccountStatus.ACTIVE)
+        every { customerAccountRepository.findById(account.id) } returns account
         every {
             customerAccountRepository.updateStatus(
                 account,
@@ -126,21 +112,15 @@ class AccountServiceTest {
             )
         } returns account.copy(status = AccountStatus.SUSPENDED)
 
-        val result = service.updateAccountStatus(id, AccountStatus.SUSPENDED)
+        val result = service.updateAccountStatus(account.id, AccountStatus.SUSPENDED)
 
         assertThat(result.status).isEqualTo(AccountStatus.SUSPENDED)
     }
 
     @Test
     fun `should allow updating status of non-closed account`() {
-        val id = UUID.randomUUID()
-        val account = CustomerAccount(
-            id = id,
-            customerId = UUID.randomUUID(),
-            status = AccountStatus.SUSPENDED,
-            createdAt = LocalDateTime.now()
-        )
-        every { customerAccountRepository.findById(id) } returns account
+        val account = accountWithStatus(AccountStatus.SUSPENDED)
+        every { customerAccountRepository.findById(account.id) } returns account
         every {
             customerAccountRepository.updateStatus(
                 account,
@@ -148,22 +128,15 @@ class AccountServiceTest {
             )
         } returns account.copy(status = AccountStatus.SUSPENDED)
 
-        val result = service.updateAccountStatus(id, AccountStatus.SUSPENDED)
+        val result = service.updateAccountStatus(account.id, AccountStatus.SUSPENDED)
 
         assertThat(result.status).isEqualTo(AccountStatus.SUSPENDED)
     }
 
     @Test
     fun `should close active account`() {
-        val id = UUID.randomUUID()
-        val account =
-            CustomerAccount(
-                id = id,
-                customerId = UUID.randomUUID(),
-                status = AccountStatus.ACTIVE,
-                createdAt = LocalDateTime.now()
-            )
-        every { customerAccountRepository.findById(id) } returns account
+        val account = accountWithStatus(AccountStatus.ACTIVE)
+        every { customerAccountRepository.findById(account.id) } returns account
         every {
             customerAccountRepository.updateStatus(
                 account,
@@ -171,21 +144,15 @@ class AccountServiceTest {
             )
         } returns account.copy(status = AccountStatus.CLOSED)
 
-        val result = service.updateAccountStatus(id, AccountStatus.CLOSED)
+        val result = service.updateAccountStatus(account.id, AccountStatus.CLOSED)
 
         assertThat(result.status).isEqualTo(AccountStatus.CLOSED)
     }
 
     @Test
     fun `should close suspended account`() {
-        val id = UUID.randomUUID()
-        val account = CustomerAccount(
-            id = id,
-            customerId = UUID.randomUUID(),
-            status = AccountStatus.SUSPENDED,
-            createdAt = LocalDateTime.now()
-        )
-        every { customerAccountRepository.findById(id) } returns account
+        val account = accountWithStatus(AccountStatus.SUSPENDED)
+        every { customerAccountRepository.findById(account.id) } returns account
         every {
             customerAccountRepository.updateStatus(
                 account,
@@ -193,37 +160,24 @@ class AccountServiceTest {
             )
         } returns account.copy(status = AccountStatus.CLOSED)
 
-        val result = service.updateAccountStatus(id, AccountStatus.CLOSED)
+        val result = service.updateAccountStatus(account.id, AccountStatus.CLOSED)
 
         assertThat(result.status).isEqualTo(AccountStatus.CLOSED)
     }
 
     @Test
     fun `should not close already closed account`() {
-        val id = UUID.randomUUID()
-        val account =
-            CustomerAccount(
-                id = id,
-                customerId = UUID.randomUUID(),
-                status = AccountStatus.CLOSED,
-                createdAt = LocalDateTime.now()
-            )
-        every { customerAccountRepository.findById(id) } returns account
+        val account = accountWithStatus(AccountStatus.CLOSED)
+        every { customerAccountRepository.findById(account.id) } returns account
 
-        assertThatThrownBy { service.updateAccountStatus(id, AccountStatus.CLOSED) }
+        assertThatThrownBy { service.updateAccountStatus(account.id, AccountStatus.CLOSED) }
             .isInstanceOf(AccountStatusException::class.java)
     }
 
     @Test
     fun `should activate suspended account`() {
-        val id = UUID.randomUUID()
-        val account = CustomerAccount(
-            id = id,
-            customerId = UUID.randomUUID(),
-            status = AccountStatus.SUSPENDED,
-            createdAt = LocalDateTime.now()
-        )
-        every { customerAccountRepository.findById(id) } returns account
+        val account = accountWithStatus(AccountStatus.SUSPENDED)
+        every { customerAccountRepository.findById(account.id) } returns account
         every {
             customerAccountRepository.updateStatus(
                 account,
@@ -231,22 +185,15 @@ class AccountServiceTest {
             )
         } returns account.copy(status = AccountStatus.ACTIVE)
 
-        val result = service.updateAccountStatus(id, AccountStatus.ACTIVE)
+        val result = service.updateAccountStatus(account.id, AccountStatus.ACTIVE)
 
         assertThat(result.status).isEqualTo(AccountStatus.ACTIVE)
     }
 
     @Test
     fun `should allow reactivating active account`() {
-        val id = UUID.randomUUID()
-        val account =
-            CustomerAccount(
-                id = id,
-                customerId = UUID.randomUUID(),
-                status = AccountStatus.ACTIVE,
-                createdAt = LocalDateTime.now()
-            )
-        every { customerAccountRepository.findById(id) } returns account
+        val account = accountWithStatus(AccountStatus.ACTIVE)
+        every { customerAccountRepository.findById(account.id) } returns account
         every {
             customerAccountRepository.updateStatus(
                 account,
@@ -254,45 +201,35 @@ class AccountServiceTest {
             )
         } returns account.copy(status = AccountStatus.ACTIVE)
 
-        val result = service.updateAccountStatus(id, AccountStatus.ACTIVE)
+        val result = service.updateAccountStatus(account.id, AccountStatus.ACTIVE)
 
         assertThat(result.status).isEqualTo(AccountStatus.ACTIVE)
     }
 
     @Test
     fun `should pass verification when balance is sufficient`() {
-        val accountId = UUID.randomUUID()
-        val account = CustomerAccount(
-            id = accountId,
-            customerId = UUID.randomUUID(),
-            status = AccountStatus.ACTIVE,
-            createdAt = LocalDateTime.now()
-        )
-        every { customerAccountRepository.lockAccount(accountId) } returns Unit
-        every { accountBalanceService.findBalance(accountId) } returns AccountBalance(
-            accountId = accountId,
+        val account = accountWithStatus(AccountStatus.ACTIVE)
+        every { customerAccountRepository.findById(account.id) } returns account
+        every { customerAccountRepository.lockAccount(account.id) } returns Unit
+        every { accountBalanceService.findBalance(account.id) } returns AccountBalance(
+            accountId = account.id,
             balance = BigDecimal("100.00"),
             activeHolds = BigDecimal.ZERO
         )
 
         service.lockAndVerifyBalance(account, BigDecimal("50.00"))
 
-        verify { customerAccountRepository.lockAccount(accountId) }
-        verify { accountBalanceService.findBalance(accountId) }
+        verify { customerAccountRepository.lockAccount(account.id) }
+        verify { accountBalanceService.findBalance(account.id) }
     }
 
     @Test
     fun `should throw InsufficientFundsException when balance is insufficient`() {
-        val accountId = UUID.randomUUID()
-        val account = CustomerAccount(
-            id = accountId,
-            customerId = UUID.randomUUID(),
-            status = AccountStatus.ACTIVE,
-            createdAt = LocalDateTime.now()
-        )
-        every { customerAccountRepository.lockAccount(accountId) } returns Unit
-        every { accountBalanceService.findBalance(accountId) } returns AccountBalance(
-            accountId = accountId,
+        val account = accountWithStatus(AccountStatus.ACTIVE)
+        every { customerAccountRepository.findById(account.id) } returns account
+        every { customerAccountRepository.lockAccount(account.id) } returns Unit
+        every { accountBalanceService.findBalance(account.id) } returns AccountBalance(
+            accountId = account.id,
             balance = BigDecimal("30.00"),
             activeHolds = BigDecimal.ZERO
         )
@@ -300,5 +237,14 @@ class AccountServiceTest {
         assertThatThrownBy {
             service.lockAndVerifyBalance(account, BigDecimal("50.00"))
         }.isInstanceOf(InsufficientFundsException::class.java)
+    }
+
+    fun accountWithStatus(status: AccountStatus): CustomerAccount {
+        return CustomerAccount(
+            id = UUID.randomUUID(),
+            customerId = UUID.randomUUID(),
+            status = status,
+            createdAt = LocalDateTime.now()
+        )
     }
 }

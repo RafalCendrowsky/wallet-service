@@ -40,26 +40,36 @@ class AccountBalanceServiceTest {
     }
 
     @Test
+    fun `should mark account as dirty`() {
+        val accountId = UUID.randomUUID()
+        every { accountBalanceQueueRepository.insert(accountId) } returns Unit
+
+        service.markAccountForRefresh(accountId)
+
+        verify { accountBalanceQueueRepository.insert(accountId) }
+    }
+
+    @Test
     fun `should refresh balances from queued accounts`() {
         val accountIds = listOf(UUID.randomUUID(), UUID.randomUUID())
-        every { accountBalanceQueueRepository.claimOldestBatch(1000) } returns accountIds
+        every { accountBalanceQueueRepository.claimOldestBatch(any()) } returns accountIds
         every { accountBalanceRepository.refreshBalances(accountIds) } returns Unit
 
-        service.refreshBalance()
+        service.refreshBalance(2)
 
-        verify { accountBalanceQueueRepository.claimOldestBatch(1000) }
+        verify { accountBalanceQueueRepository.claimOldestBatch(any()) }
         verify { accountBalanceRepository.refreshBalances(accountIds) }
     }
 
     @Test
     fun `should handle empty queue gracefully`() {
         val emptyList = emptyList<UUID>()
-        every { accountBalanceQueueRepository.claimOldestBatch(1000) } returns emptyList
+        every { accountBalanceQueueRepository.claimOldestBatch(any()) } returns emptyList
         every { accountBalanceRepository.refreshBalances(emptyList) } returns Unit
 
-        service.refreshBalance()
+        service.refreshBalance(2)
 
-        verify { accountBalanceQueueRepository.claimOldestBatch(1000) }
-        verify { accountBalanceRepository.refreshBalances(emptyList) }
+        verify { accountBalanceQueueRepository.claimOldestBatch(any()) }
+        verify(exactly = 0) { accountBalanceRepository.refreshBalances(any()) }
     }
 }

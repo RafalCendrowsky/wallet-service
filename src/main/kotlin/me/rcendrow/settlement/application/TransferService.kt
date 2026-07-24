@@ -74,6 +74,10 @@ class TransferService(
         fromAccount.verifyStatus(AccountStatus.ACTIVE)
         toAccount.verifyStatusNot(AccountStatus.CLOSED)
 
+        if (fromAccount.id == toAccount.id) {
+            throw IllegalArgumentException("Self-transfer not allowed")
+        }
+
         if (amount <= BigDecimal.ZERO) {
             throw IllegalArgumentException("Amount must be positive")
         }

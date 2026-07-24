@@ -95,6 +95,7 @@ class TransferServiceTest {
         every { transferRepository.create(any()) } answers { firstArg() }
         every { ledgerService.createCreditEntry(any()) } returns mockk()
         every { ledgerService.createDebitEntry(any()) } returns mockk()
+        every { accountBalanceService.markAccountForRefresh(any()) } returns Unit
 
         val result = service.createTransfer(fromId, toId, BigDecimal("50.00"), key)
 
@@ -164,6 +165,22 @@ class TransferServiceTest {
     }
 
     @Test
+    fun `should reject self-transfer`() {
+        val accountId = UUID.randomUUID()
+        every { accountService.getCustomerAccount(accountId) } returns activeAccount(accountId)
+
+        assertThatThrownBy {
+            service.createTransfer(
+                fromAccount = accountId,
+                toAccount = accountId,
+                amount = BigDecimal("50.00"),
+                idempotencyKey = UUID.randomUUID().toString(),
+            )
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("Self-transfer")
+    }
+
+    @Test
     fun `should skip balance check for system account deposits`() {
         val systemAccount = ServiceAccount(
             id = UUID.fromString("00000000-0000-0000-0000-000000000001"),
@@ -179,6 +196,7 @@ class TransferServiceTest {
         every { transferRepository.create(any()) } answers { firstArg() }
         every { ledgerService.createCreditEntry(any()) } returns mockk()
         every { ledgerService.createDebitEntry(any()) } returns mockk()
+        every { accountBalanceService.markAccountForRefresh(any()) } returns Unit
 
         service.createDeposit(toId, BigDecimal("50.00"), UUID.randomUUID().toString())
 

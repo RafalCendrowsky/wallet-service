@@ -16,19 +16,18 @@ class AccountBalanceQueueRepository(private val db: DSLContext) {
     }
 
     fun claimOldestBatch(limit: Int = 1): List<UUID> {
-        return db.deleteFrom(ACCOUNT_BALANCE_QUEUE)
-            .where(
-                ACCOUNT_BALANCE_QUEUE.ACCOUNT_ID.`in`(
-                    db.select(ACCOUNT_BALANCE_QUEUE.ACCOUNT_ID)
-                        .from(ACCOUNT_BALANCE_QUEUE)
-                        .orderBy(ACCOUNT_BALANCE_QUEUE.CREATED_AT.desc())
-                        .limit(limit)
-                        .forUpdate()
-                        .skipLocked()
-                        .fetch()
-                )
-            )
-            .returning()
+        val queue = db.select(ACCOUNT_BALANCE_QUEUE.ACCOUNT_ID)
+            .from(ACCOUNT_BALANCE_QUEUE)
+            .orderBy(ACCOUNT_BALANCE_QUEUE.CREATED_AT.asc())
+            .limit(limit)
+            .forUpdate()
+            .skipLocked()
+            .asTable("queue")
+
+        return db.delete(ACCOUNT_BALANCE_QUEUE)
+            .using(queue)
+            .where(ACCOUNT_BALANCE_QUEUE.ACCOUNT_ID.eq(queue.field(ACCOUNT_BALANCE_QUEUE.ACCOUNT_ID)))
+            .returning(ACCOUNT_BALANCE_QUEUE.ACCOUNT_ID)
             .fetch(ACCOUNT_BALANCE_QUEUE.ACCOUNT_ID)
             .map { it!! }
     }
