@@ -1,7 +1,7 @@
 spring:
   application:
-    name: settlement-service
+    name: wallet-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/settlement
-    username: settlement
-    password: settlement
+    url: jdbc:postgresql://localhost:5432/wallet
+    username: wallet
+    password: wallet

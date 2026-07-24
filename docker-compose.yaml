@@ -1,17 +1,17 @@
 services:
   postgres:
     image: postgres:18
-    container_name: settlement-postgres
+    container_name: wallet-postgres
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: settlement
-      POSTGRES_USER: settlement
-      POSTGRES_PASSWORD: settlement
+      POSTGRES_DB: wallet
+      POSTGRES_USER: wallet
+      POSTGRES_PASSWORD: wallet
     volumes:
       - pgdata:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U settlement -d settlement"]
+      test: [ "CMD-SHELL", "pg_isready -U wallet -d wallet" ]
       interval: 5s
       timeout: 5s
       retries: 5

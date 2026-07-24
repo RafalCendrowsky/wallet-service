@@ -9,7 +9,7 @@ plugins {
 
 group = "me.rcendrow"
 version = "0.0.1-SNAPSHOT"
-description = "settlement-service"
+description = "wallet-service"
 
 java {
     toolchain {
@@ -64,9 +64,9 @@ jooq {
     configuration {
         jdbc {
             driver = "org.postgresql.Driver"
-            url = "jdbc:postgresql://localhost:5432/settlement"
-            user = "settlement"
-            password = "settlement"
+            url = "jdbc:postgresql://localhost:5432/wallet"
+            user = "wallet"
+            password = "wallet"
         }
 
         generator {
@@ -85,9 +85,9 @@ jooq {
 }
 
 flyway {
-    url = "jdbc:postgresql://localhost:5432/settlement"
-    user = "settlement"
-    password = "settlement"
+    url = "jdbc:postgresql://localhost:5432/wallet"
+    user = "wallet"
+    password = "wallet"
     locations = arrayOf("filesystem:src/main/resources/db/migration")
 }
 
