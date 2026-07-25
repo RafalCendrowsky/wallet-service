@@ -31,7 +31,7 @@ alter table wallet_balance rename constraint account_balance_pkey to wallet_bala
 alter table wallet_balance rename constraint account_balance_account_id_fkey to wallet_balance_wallet_id_fkey;
 alter table wallet_balance rename constraint account_balance_last_entry_id_fkey to wallet_balance_last_entry_id_fkey;
 
-alter table wallet_balance_queue rename constraint account_balance_queue_wallet_id_fkey to wallet_balance_queue_wallet_id_fkey;
+alter table wallet_balance_queue rename constraint account_balance_queue_account_id_fkey to wallet_balance_queue_wallet_id_fkey;
 alter table wallet_balance_queue rename constraint account_balance_queue_pkey to wallet_balance_queue_pkey;
 
 alter table hold rename constraint hold_account_id_fkey to hold_wallet_id_fkey;
