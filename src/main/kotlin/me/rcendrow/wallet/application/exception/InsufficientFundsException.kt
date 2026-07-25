@@ -4,7 +4,7 @@ import java.math.BigDecimal
 import java.util.*
 
 class InsufficientFundsException(
-    accountId: UUID,
+    walletId: UUID,
     balance: BigDecimal,
     requested: BigDecimal,
-) : RuntimeException("Insufficient funds in account $accountId: balance=$balance, requested=$requested")
+) : RuntimeException("Insufficient funds in wallet $walletId: balance=$balance, requested=$requested")

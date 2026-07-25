@@ -34,31 +34,31 @@ class WalletServiceWebTests {
     }
 
     @Test
-    fun `should return 201 when creating account`() {
-        val customerId = createCustomer("account-owner@test.com").id
+    fun `should return 201 when creating wallet`() {
+        val customerId = createCustomer("wallet-owner@test.com").id
 
         rest.post()
-            .uri("/accounts")
-            .body(CreateAccountRequest(customerId = customerId))
+            .uri("/wallets")
+            .body(CreateWalletRequest(customerId = customerId))
             .exchange()
             .expectStatus().isCreated
     }
 
     @Test
-    fun `should return 200 for existing account`() {
+    fun `should return 200 for existing wallet`() {
         val customerId = createCustomer("existing@test.com").id
-        val id = createAccount(customerId).id
+        val id = createWallet(customerId).id
 
         rest.get()
-            .uri("/accounts/$id")
+            .uri("/wallets/$id")
             .exchange()
             .expectStatus().isOk
     }
 
     @Test
-    fun `should return 404 for unknown account`() {
+    fun `should return 404 for unknown wallet`() {
         rest.get()
-            .uri("/accounts/${UUID.randomUUID()}")
+            .uri("/wallets/${UUID.randomUUID()}")
             .exchange()
             .expectStatus().isNotFound
     }
@@ -67,8 +67,8 @@ class WalletServiceWebTests {
     fun `should return 422 for insufficient funds`() {
         val customer1Id = createCustomer("poor@test.com").id
         val customer2Id = createCustomer("rich@test.com").id
-        val senderId = createAccount(customer1Id).id
-        val receiverId = createAccount(customer2Id).id
+        val senderId = createWallet(customer1Id).id
+        val receiverId = createWallet(customer2Id).id
 
         rest.post()
             .uri("/transfers")
@@ -80,7 +80,7 @@ class WalletServiceWebTests {
     @Test
     fun `should return 400 when customerId is null`() {
         rest.post()
-            .uri("/accounts")
+            .uri("/wallets")
             .contentType(MediaType.APPLICATION_JSON)
             .body("""{"customerId": null}""")
             .exchange()
@@ -92,7 +92,7 @@ class WalletServiceWebTests {
         rest.post()
             .uri("/transfers")
             .contentType(MediaType.APPLICATION_JSON)
-            .body("""{"fromAccount": null, "toAccount": null, "amount": null, "idempotencyKey": null}""")
+            .body("""{"fromWallet": null, "toWallet": null, "amount": null, "idempotencyKey": null}""")
             .exchange()
             .expectStatus().isBadRequest
     }
@@ -100,10 +100,10 @@ class WalletServiceWebTests {
     @Test
     fun `should return 200 for balance endpoint`() {
         val customerId = createCustomer("balance-test@test.com").id
-        val id = createAccount(customerId).id
+        val id = createWallet(customerId).id
 
         rest.get()
-            .uri("/accounts/$id/balance")
+            .uri("/wallets/$id/balance")
             .exchange()
             .expectStatus().isOk
     }
@@ -111,10 +111,10 @@ class WalletServiceWebTests {
     @Test
     fun `should return 200 for empty transfer history`() {
         val customerId = createCustomer("history@test.com").id
-        val id = createAccount(customerId).id
+        val id = createWallet(customerId).id
 
         rest.get()
-            .uri("/accounts/$id/transfers?page=0&size=3")
+            .uri("/wallets/$id/transfers?page=0&size=3")
             .exchange()
             .expectStatus().isOk
     }
@@ -130,13 +130,13 @@ class WalletServiceWebTests {
             .responseBody!!
     }
 
-    private fun createAccount(customerId: UUID): AccountResponse {
+    private fun createWallet(customerId: UUID): WalletResponse {
         return rest.post()
-            .uri("/accounts")
-            .body(CreateAccountRequest(customerId = customerId))
+            .uri("/wallets")
+            .body(CreateWalletRequest(customerId = customerId))
             .exchange()
             .expectStatus().isCreated
-            .expectBody<AccountResponse>()
+            .expectBody<WalletResponse>()
             .returnResult()
             .responseBody!!
     }

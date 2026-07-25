@@ -24,11 +24,11 @@ class LedgerServiceTest {
     }
 
     @Test
-    fun `should create DEBIT entry with fromAccount`() {
+    fun `should create DEBIT entry with fromWallet`() {
         val transfer = Transfer(
             id = UUID.randomUUID(),
-            fromAccount = UUID.randomUUID(),
-            toAccount = UUID.randomUUID(),
+            fromWallet = UUID.randomUUID(),
+            toWallet = UUID.randomUUID(),
             amount = BigDecimal("50.00"),
             idempotencyKey = UUID.randomUUID().toString(),
             createdAt = LocalDateTime.now(),
@@ -37,18 +37,18 @@ class LedgerServiceTest {
 
         val result = service.createDebitEntry(transfer)
 
-        assertThat(result.accountId).isEqualTo(transfer.fromAccount)
+        assertThat(result.walletId).isEqualTo(transfer.fromWallet)
         assertThat(result.transferId).isEqualTo(transfer.id)
         assertThat(result.amount).isEqualByComparingTo(transfer.amount.negate())
         verify { ledgerEntryRepository.create(result) }
     }
 
     @Test
-    fun `should create CREDIT entry with toAccount`() {
+    fun `should create CREDIT entry with toWallet`() {
         val transfer = Transfer(
             id = UUID.randomUUID(),
-            fromAccount = UUID.randomUUID(),
-            toAccount = UUID.randomUUID(),
+            fromWallet = UUID.randomUUID(),
+            toWallet = UUID.randomUUID(),
             amount = BigDecimal("75.00"),
             idempotencyKey = UUID.randomUUID().toString(),
             createdAt = LocalDateTime.now(),
@@ -57,7 +57,7 @@ class LedgerServiceTest {
 
         val result = service.createCreditEntry(transfer)
 
-        assertThat(result.accountId).isEqualTo(transfer.toAccount)
+        assertThat(result.walletId).isEqualTo(transfer.toWallet)
         assertThat(result.transferId).isEqualTo(transfer.id)
         assertThat(result.amount).isEqualByComparingTo(transfer.amount)
         verify { ledgerEntryRepository.create(result) }

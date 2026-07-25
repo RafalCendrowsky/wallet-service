@@ -7,7 +7,7 @@ import java.util.*
 data class LedgerEntry(
     val id: UUID,
     val transferId: UUID,
-    val accountId: UUID,
+    val walletId: UUID,
     val amount: BigDecimal,
     val createdAt: LocalDateTime,
 )

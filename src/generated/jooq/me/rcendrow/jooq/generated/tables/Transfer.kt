@@ -13,12 +13,12 @@ import kotlin.collections.List
 
 import me.rcendrow.jooq.generated.Public
 import me.rcendrow.jooq.generated.indexes.TRANSFER_IDEMPOTENCY_KEY_IDX
-import me.rcendrow.jooq.generated.keys.LEDGER_ENTRY__LEDGER_TRANSFER_ID_FKEY
+import me.rcendrow.jooq.generated.keys.LEDGER_ENTRY__LEDGER_ENTRY_TRANSFER_ID_FKEY
 import me.rcendrow.jooq.generated.keys.TRANSFER_PKEY
-import me.rcendrow.jooq.generated.keys.TRANSFER__TRANSFER_FROM_ACCOUNT_FKEY
-import me.rcendrow.jooq.generated.keys.TRANSFER__TRANSFER_TO_ACCOUNT_FKEY
-import me.rcendrow.jooq.generated.tables.Account.AccountPath
+import me.rcendrow.jooq.generated.keys.TRANSFER__TRANSFER_FROM_WALLET_FKEY
+import me.rcendrow.jooq.generated.keys.TRANSFER__TRANSFER_TO_WALLET_FKEY
 import me.rcendrow.jooq.generated.tables.LedgerEntry.LedgerEntryPath
+import me.rcendrow.jooq.generated.tables.Wallet.WalletPath
 import me.rcendrow.jooq.generated.tables.records.TransferRecord
 
 import org.jooq.Condition
@@ -88,14 +88,14 @@ open class Transfer(
     val ID: TableField<TransferRecord, UUID?> = createField(DSL.name("id"), SQLDataType.UUID.nullable(false).defaultValue(DSL.field(DSL.raw("uuidv7()"), SQLDataType.UUID)), this, "")
 
     /**
-     * The column <code>public.transfer.from_account</code>.
+     * The column <code>public.transfer.from_wallet</code>.
      */
-    val FROM_ACCOUNT: TableField<TransferRecord, UUID?> = createField(DSL.name("from_account"), SQLDataType.UUID.nullable(false), this, "")
+    val FROM_WALLET: TableField<TransferRecord, UUID?> = createField(DSL.name("from_wallet"), SQLDataType.UUID.nullable(false), this, "")
 
     /**
-     * The column <code>public.transfer.to_account</code>.
+     * The column <code>public.transfer.to_wallet</code>.
      */
-    val TO_ACCOUNT: TableField<TransferRecord, UUID?> = createField(DSL.name("to_account"), SQLDataType.UUID.nullable(false), this, "")
+    val TO_WALLET: TableField<TransferRecord, UUID?> = createField(DSL.name("to_wallet"), SQLDataType.UUID.nullable(false), this, "")
 
     /**
      * The column <code>public.transfer.amount</code>.
@@ -146,39 +146,39 @@ open class Transfer(
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
     override fun getIndexes(): List<Index> = listOf(TRANSFER_IDEMPOTENCY_KEY_IDX)
     override fun getPrimaryKey(): UniqueKey<TransferRecord> = TRANSFER_PKEY
-    override fun getReferences(): List<ForeignKey<TransferRecord, *>> = listOf(TRANSFER__TRANSFER_FROM_ACCOUNT_FKEY, TRANSFER__TRANSFER_TO_ACCOUNT_FKEY)
+    override fun getReferences(): List<ForeignKey<TransferRecord, *>> = listOf(TRANSFER__TRANSFER_FROM_WALLET_FKEY, TRANSFER__TRANSFER_TO_WALLET_FKEY)
 
-    private lateinit var _transferFromAccountFkey: AccountPath
-
-    /**
-     * Get the implicit join path to the <code>public.account</code> table, via
-     * the <code>transfer_from_account_fkey</code> key.
-     */
-    fun transferFromAccountFkey(): AccountPath {
-        if (!this::_transferFromAccountFkey.isInitialized)
-            _transferFromAccountFkey = AccountPath(this, TRANSFER__TRANSFER_FROM_ACCOUNT_FKEY, null)
-
-        return _transferFromAccountFkey;
-    }
-
-    val transferFromAccountFkey: AccountPath
-        get(): AccountPath = transferFromAccountFkey()
-
-    private lateinit var _transferToAccountFkey: AccountPath
+    private lateinit var _transferFromWalletFkey: WalletPath
 
     /**
-     * Get the implicit join path to the <code>public.account</code> table, via
-     * the <code>transfer_to_account_fkey</code> key.
+     * Get the implicit join path to the <code>public.wallet</code> table, via
+     * the <code>transfer_from_wallet_fkey</code> key.
      */
-    fun transferToAccountFkey(): AccountPath {
-        if (!this::_transferToAccountFkey.isInitialized)
-            _transferToAccountFkey = AccountPath(this, TRANSFER__TRANSFER_TO_ACCOUNT_FKEY, null)
+    fun transferFromWalletFkey(): WalletPath {
+        if (!this::_transferFromWalletFkey.isInitialized)
+            _transferFromWalletFkey = WalletPath(this, TRANSFER__TRANSFER_FROM_WALLET_FKEY, null)
 
-        return _transferToAccountFkey;
+        return _transferFromWalletFkey;
     }
 
-    val transferToAccountFkey: AccountPath
-        get(): AccountPath = transferToAccountFkey()
+    val transferFromWalletFkey: WalletPath
+        get(): WalletPath = transferFromWalletFkey()
+
+    private lateinit var _transferToWalletFkey: WalletPath
+
+    /**
+     * Get the implicit join path to the <code>public.wallet</code> table, via
+     * the <code>transfer_to_wallet_fkey</code> key.
+     */
+    fun transferToWalletFkey(): WalletPath {
+        if (!this::_transferToWalletFkey.isInitialized)
+            _transferToWalletFkey = WalletPath(this, TRANSFER__TRANSFER_TO_WALLET_FKEY, null)
+
+        return _transferToWalletFkey;
+    }
+
+    val transferToWalletFkey: WalletPath
+        get(): WalletPath = transferToWalletFkey()
 
     private lateinit var _ledgerEntry: LedgerEntryPath
 
@@ -188,7 +188,7 @@ open class Transfer(
      */
     fun ledgerEntry(): LedgerEntryPath {
         if (!this::_ledgerEntry.isInitialized)
-            _ledgerEntry = LedgerEntryPath(this, null, LEDGER_ENTRY__LEDGER_TRANSFER_ID_FKEY.inverseKey)
+            _ledgerEntry = LedgerEntryPath(this, null, LEDGER_ENTRY__LEDGER_ENTRY_TRANSFER_ID_FKEY.inverseKey)
 
         return _ledgerEntry;
     }

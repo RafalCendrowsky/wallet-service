@@ -7,8 +7,8 @@ import java.util.*
 
 data class TransferResponse(
     val id: UUID,
-    val fromAccount: UUID,
-    val toAccount: UUID,
+    val fromWallet: UUID,
+    val toWallet: UUID,
     val amount: BigDecimal,
     val idempotencyKey: String,
     val createdAt: LocalDateTime,
@@ -16,8 +16,8 @@ data class TransferResponse(
     companion object {
         fun from(transfer: Transfer) = TransferResponse(
             id = transfer.id,
-            fromAccount = transfer.fromAccount,
-            toAccount = transfer.toAccount,
+            fromWallet = transfer.fromWallet,
+            toWallet = transfer.toWallet,
             amount = transfer.amount,
             idempotencyKey = transfer.idempotencyKey,
             createdAt = transfer.createdAt,

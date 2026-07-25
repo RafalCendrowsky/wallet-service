@@ -8,7 +8,7 @@ import java.util.*
 
 data class CreateWithdrawalRequest(
     @field:NotNull
-    val accountId: UUID?,
+    val walletId: UUID?,
 
     @field:NotNull
     @field:DecimalMin("0.01")

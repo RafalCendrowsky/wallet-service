@@ -27,9 +27,9 @@ class TransferRepository(private val db: DSLContext) {
             .fetchOneInto(Transfer::class.java)
     }
 
-    fun findByAccountId(accountId: UUID, pageable: Pageable): Page<Transfer> {
+    fun findByWalletId(walletId: UUID, pageable: Pageable): Page<Transfer> {
         val records = db.selectFrom(TRANSFER)
-            .where(TRANSFER.FROM_ACCOUNT.eq(accountId).or(TRANSFER.TO_ACCOUNT.eq(accountId)))
+            .where(TRANSFER.FROM_WALLET.eq(walletId).or(TRANSFER.TO_WALLET.eq(walletId)))
             .orderBy(TRANSFER.CREATED_AT.desc())
             .limit(pageable.pageSize)
             .offset(pageable.offset)
@@ -37,7 +37,7 @@ class TransferRepository(private val db: DSLContext) {
 
         val total = db.select(DSL.count())
             .from(TRANSFER)
-            .where(TRANSFER.FROM_ACCOUNT.eq(accountId).or(TRANSFER.TO_ACCOUNT.eq(accountId)))
+            .where(TRANSFER.FROM_WALLET.eq(walletId).or(TRANSFER.TO_WALLET.eq(walletId)))
             .fetchOneInto(Long::class.java)!!
 
         return PageImpl(records, pageable, total)
@@ -47,8 +47,8 @@ class TransferRepository(private val db: DSLContext) {
         try {
             return db.insertInto(TRANSFER)
                 .set(TRANSFER.ID, transfer.id)
-                .set(TRANSFER.FROM_ACCOUNT, transfer.fromAccount)
-                .set(TRANSFER.TO_ACCOUNT, transfer.toAccount)
+                .set(TRANSFER.FROM_WALLET, transfer.fromWallet)
+                .set(TRANSFER.TO_WALLET, transfer.toWallet)
                 .set(TRANSFER.AMOUNT, transfer.amount)
                 .set(TRANSFER.IDEMPOTENCY_KEY, transfer.idempotencyKey)
                 .set(TRANSFER.CREATED_AT, transfer.createdAt)

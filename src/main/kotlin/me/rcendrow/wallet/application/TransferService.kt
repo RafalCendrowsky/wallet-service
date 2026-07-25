@@ -3,10 +3,10 @@ package me.rcendrow.wallet.application
 import com.fasterxml.uuid.Generators
 import me.rcendrow.wallet.application.exception.DuplicateIdempotencyKeyException
 import me.rcendrow.wallet.domain.Transfer
-import me.rcendrow.wallet.domain.account.Account
-import me.rcendrow.wallet.domain.account.AccountStatus
-import me.rcendrow.wallet.domain.account.CustomerAccount
-import me.rcendrow.wallet.domain.account.ServiceAccountRole
+import me.rcendrow.wallet.domain.wallet.Wallet
+import me.rcendrow.wallet.domain.wallet.WalletStatus
+import me.rcendrow.wallet.domain.wallet.CustomerWallet
+import me.rcendrow.wallet.domain.wallet.ServiceWalletRole
 import me.rcendrow.wallet.persistence.TransferRepository
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -19,30 +19,30 @@ import java.util.*
 @Service
 class TransferService(
     private val transferRepository: TransferRepository,
-    private val accountService: AccountService,
+    private val walletService: WalletService,
     private val ledgerService: LedgerService,
-    private val accountBalanceService: AccountBalanceService,
+    private val walletBalanceService: WalletBalanceService,
 ) {
 
     @Transactional
-    fun createDeposit(accountId: UUID, amount: BigDecimal, idempotencyKey: String): Transfer {
-        val account = accountService.getCustomerAccount(accountId)
-        val systemAccount = accountService.getServiceAccountByRole(ServiceAccountRole.EXTERNAL_SETTLEMENT)
+    fun createDeposit(walletId: UUID, amount: BigDecimal, idempotencyKey: String): Transfer {
+        val wallet = walletService.getCustomerWallet(walletId)
+        val systemWallet = walletService.getServiceWalletByRole(ServiceWalletRole.EXTERNAL_SETTLEMENT)
         return createTransfer(
-            fromAccount = systemAccount,
-            toAccount = account,
+            fromWallet = systemWallet,
+            toWallet = wallet,
             amount = amount,
             idempotencyKey = idempotencyKey,
         )
     }
 
     @Transactional
-    fun createWithdrawal(accountId: UUID, amount: BigDecimal, idempotencyKey: String): Transfer {
-        val account = accountService.getCustomerAccount(accountId)
-        val systemAccount = accountService.getServiceAccountByRole(ServiceAccountRole.EXTERNAL_SETTLEMENT)
+    fun createWithdrawal(walletId: UUID, amount: BigDecimal, idempotencyKey: String): Transfer {
+        val wallet = walletService.getCustomerWallet(walletId)
+        val systemWallet = walletService.getServiceWalletByRole(ServiceWalletRole.EXTERNAL_SETTLEMENT)
         return createTransfer(
-            fromAccount = account,
-            toAccount = systemAccount,
+            fromWallet = wallet,
+            toWallet = systemWallet,
             amount = amount,
             idempotencyKey = idempotencyKey,
         )
@@ -50,31 +50,31 @@ class TransferService(
 
     @Transactional
     fun createTransfer(
-        fromAccount: UUID,
-        toAccount: UUID,
+        fromWallet: UUID,
+        toWallet: UUID,
         amount: BigDecimal,
         idempotencyKey: String,
     ): Transfer {
-        val from = accountService.getCustomerAccount(fromAccount)
-        val to = accountService.getCustomerAccount(toAccount)
+        val from = walletService.getCustomerWallet(fromWallet)
+        val to = walletService.getCustomerWallet(toWallet)
         return createTransfer(
-            fromAccount = from,
-            toAccount = to,
+            fromWallet = from,
+            toWallet = to,
             amount = amount,
             idempotencyKey = idempotencyKey,
         )
     }
 
     private fun createTransfer(
-        fromAccount: Account,
-        toAccount: Account,
+        fromWallet: Wallet,
+        toWallet: Wallet,
         amount: BigDecimal,
         idempotencyKey: String,
     ): Transfer {
-        fromAccount.verifyStatus(AccountStatus.ACTIVE)
-        toAccount.verifyStatusNot(AccountStatus.CLOSED)
+        fromWallet.verifyStatus(WalletStatus.ACTIVE)
+        toWallet.verifyStatusNot(WalletStatus.CLOSED)
 
-        if (fromAccount.id == toAccount.id) {
+        if (fromWallet.id == toWallet.id) {
             throw IllegalArgumentException("Self-transfer not allowed")
         }
 
@@ -84,14 +84,14 @@ class TransferService(
 
         transferRepository.findByIdempotencyKey(idempotencyKey)?.let { return it }
 
-        if (fromAccount is CustomerAccount) {
-            accountService.lockAndVerifyBalance(fromAccount, amount)
+        if (fromWallet is CustomerWallet) {
+            walletService.lockAndVerifyBalance(fromWallet, amount)
         }
 
         val transfer = Transfer(
             id = Generators.timeBasedEpochRandomGenerator().generate(),
-            fromAccount = fromAccount.id,
-            toAccount = toAccount.id,
+            fromWallet = fromWallet.id,
+            toWallet = toWallet.id,
             amount = amount,
             idempotencyKey = idempotencyKey,
             createdAt = LocalDateTime.now(),
@@ -106,8 +106,8 @@ class TransferService(
         ledgerService.createCreditEntry(transfer)
         ledgerService.createDebitEntry(transfer)
 
-        accountBalanceService.markAccountForRefresh(fromAccount.id)
-        accountBalanceService.markAccountForRefresh(toAccount.id)
+        walletBalanceService.markWalletForRefresh(fromWallet.id)
+        walletBalanceService.markWalletForRefresh(toWallet.id)
         return transfer
     }
 
@@ -123,8 +123,8 @@ class TransferService(
     }
 
     @Transactional(readOnly = true)
-    fun getAccountTransfers(accountId: UUID, pageable: Pageable): Page<Transfer> {
-        accountService.getCustomerAccount(accountId)
-        return transferRepository.findByAccountId(accountId, pageable)
+    fun getWalletTransfers(walletId: UUID, pageable: Pageable): Page<Transfer> {
+        walletService.getCustomerWallet(walletId)
+        return transferRepository.findByWalletId(walletId, pageable)
     }
 }

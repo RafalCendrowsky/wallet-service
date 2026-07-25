@@ -17,8 +17,8 @@ class TransferController(
     @ResponseStatus(HttpStatus.CREATED)
     fun createTransfer(@Valid @RequestBody request: CreateTransferRequest): TransferResponse {
         return transferService.createTransfer(
-            fromAccount = request.fromAccount!!,
-            toAccount = request.toAccount!!,
+            fromWallet = request.fromWallet!!,
+            toWallet = request.toWallet!!,
             amount = request.amount!!,
             idempotencyKey = request.idempotencyKey!!,
         ).let { TransferResponse.from(it) }

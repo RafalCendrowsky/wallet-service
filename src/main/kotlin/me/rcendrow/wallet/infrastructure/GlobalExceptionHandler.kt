@@ -1,6 +1,6 @@
 package me.rcendrow.wallet.infrastructure
 
-import me.rcendrow.wallet.application.exception.AccountStatusException
+import me.rcendrow.wallet.application.exception.WalletStatusException
 import me.rcendrow.wallet.application.exception.HoldStatusException
 import me.rcendrow.wallet.application.exception.InsufficientFundsException
 import me.rcendrow.wallet.application.exception.NotFoundException
@@ -18,8 +18,8 @@ class GlobalExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.message!!)
     }
 
-    @ExceptionHandler(AccountStatusException::class, HoldStatusException::class)
-    fun handleAccountState(ex: RuntimeException): ProblemDetail {
+    @ExceptionHandler(WalletStatusException::class, HoldStatusException::class)
+    fun handleWalletState(ex: RuntimeException): ProblemDetail {
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, ex.message!!)
     }
 

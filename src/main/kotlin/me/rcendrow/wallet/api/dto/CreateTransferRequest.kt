@@ -8,10 +8,10 @@ import java.util.*
 
 data class CreateTransferRequest(
     @field:NotNull
-    val fromAccount: UUID?,
+    val fromWallet: UUID?,
 
     @field:NotNull
-    val toAccount: UUID?,
+    val toWallet: UUID?,
 
     @field:NotNull
     @field:DecimalMin("0.01")

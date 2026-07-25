@@ -6,16 +6,16 @@ package me.rcendrow.jooq.generated
 
 import kotlin.collections.List
 
-import me.rcendrow.jooq.generated.tables.Account
-import me.rcendrow.jooq.generated.tables.AccountBalance
-import me.rcendrow.jooq.generated.tables.AccountBalanceQueue
 import me.rcendrow.jooq.generated.tables.Customer
-import me.rcendrow.jooq.generated.tables.CustomerAccount
+import me.rcendrow.jooq.generated.tables.CustomerWallet
 import me.rcendrow.jooq.generated.tables.FlywaySchemaHistory
 import me.rcendrow.jooq.generated.tables.Hold
 import me.rcendrow.jooq.generated.tables.LedgerEntry
-import me.rcendrow.jooq.generated.tables.ServiceAccount
+import me.rcendrow.jooq.generated.tables.ServiceWallet
 import me.rcendrow.jooq.generated.tables.Transfer
+import me.rcendrow.jooq.generated.tables.Wallet
+import me.rcendrow.jooq.generated.tables.WalletBalance
+import me.rcendrow.jooq.generated.tables.WalletBalanceQueue
 
 import org.jooq.Catalog
 import org.jooq.Table
@@ -36,29 +36,14 @@ open class Public : SchemaImpl("public", DefaultCatalog.DEFAULT_CATALOG) {
     }
 
     /**
-     * The table <code>public.account</code>.
-     */
-    val ACCOUNT: Account get() = Account.ACCOUNT
-
-    /**
-     * The table <code>public.account_balance</code>.
-     */
-    val ACCOUNT_BALANCE: AccountBalance get() = AccountBalance.ACCOUNT_BALANCE
-
-    /**
-     * The table <code>public.account_balance_queue</code>.
-     */
-    val ACCOUNT_BALANCE_QUEUE: AccountBalanceQueue get() = AccountBalanceQueue.ACCOUNT_BALANCE_QUEUE
-
-    /**
      * The table <code>public.customer</code>.
      */
     val CUSTOMER: Customer get() = Customer.CUSTOMER
 
     /**
-     * The table <code>public.customer_account</code>.
+     * The table <code>public.customer_wallet</code>.
      */
-    val CUSTOMER_ACCOUNT: CustomerAccount get() = CustomerAccount.CUSTOMER_ACCOUNT
+    val CUSTOMER_WALLET: CustomerWallet get() = CustomerWallet.CUSTOMER_WALLET
 
     /**
      * The table <code>public.flyway_schema_history</code>.
@@ -76,27 +61,42 @@ open class Public : SchemaImpl("public", DefaultCatalog.DEFAULT_CATALOG) {
     val LEDGER_ENTRY: LedgerEntry get() = LedgerEntry.LEDGER_ENTRY
 
     /**
-     * The table <code>public.service_account</code>.
+     * The table <code>public.service_wallet</code>.
      */
-    val SERVICE_ACCOUNT: ServiceAccount get() = ServiceAccount.SERVICE_ACCOUNT
+    val SERVICE_WALLET: ServiceWallet get() = ServiceWallet.SERVICE_WALLET
 
     /**
      * The table <code>public.transfer</code>.
      */
     val TRANSFER: Transfer get() = Transfer.TRANSFER
 
+    /**
+     * The table <code>public.wallet</code>.
+     */
+    val WALLET: Wallet get() = Wallet.WALLET
+
+    /**
+     * The table <code>public.wallet_balance</code>.
+     */
+    val WALLET_BALANCE: WalletBalance get() = WalletBalance.WALLET_BALANCE
+
+    /**
+     * The table <code>public.wallet_balance_queue</code>.
+     */
+    val WALLET_BALANCE_QUEUE: WalletBalanceQueue get() = WalletBalanceQueue.WALLET_BALANCE_QUEUE
+
     override fun getCatalog(): Catalog = DefaultCatalog.DEFAULT_CATALOG
 
     override fun getTables(): List<Table<*>> = listOf(
-        Account.ACCOUNT,
-        AccountBalance.ACCOUNT_BALANCE,
-        AccountBalanceQueue.ACCOUNT_BALANCE_QUEUE,
         Customer.CUSTOMER,
-        CustomerAccount.CUSTOMER_ACCOUNT,
+        CustomerWallet.CUSTOMER_WALLET,
         FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY,
         Hold.HOLD,
         LedgerEntry.LEDGER_ENTRY,
-        ServiceAccount.SERVICE_ACCOUNT,
-        Transfer.TRANSFER
+        ServiceWallet.SERVICE_WALLET,
+        Transfer.TRANSFER,
+        Wallet.WALLET,
+        WalletBalance.WALLET_BALANCE,
+        WalletBalanceQueue.WALLET_BALANCE_QUEUE
     )
 }

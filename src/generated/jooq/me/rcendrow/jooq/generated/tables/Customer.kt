@@ -11,11 +11,10 @@ import kotlin.collections.Collection
 import kotlin.collections.List
 
 import me.rcendrow.jooq.generated.Public
-import me.rcendrow.jooq.generated.keys.CUSTOMER_ACCOUNT__CUSTOMER_ACCOUNT_CUSTOMER_ID_FKEY
 import me.rcendrow.jooq.generated.keys.CUSTOMER_EMAIL_KEY
 import me.rcendrow.jooq.generated.keys.CUSTOMER_PKEY
-import me.rcendrow.jooq.generated.tables.Account.AccountPath
-import me.rcendrow.jooq.generated.tables.CustomerAccount.CustomerAccountPath
+import me.rcendrow.jooq.generated.keys.CUSTOMER_WALLET__CUSTOMER_WALLET_CUSTOMER_ID_FKEY
+import me.rcendrow.jooq.generated.tables.CustomerWallet.CustomerWalletPath
 import me.rcendrow.jooq.generated.tables.records.CustomerRecord
 
 import org.jooq.Condition
@@ -128,28 +127,21 @@ open class Customer(
     override fun getPrimaryKey(): UniqueKey<CustomerRecord> = CUSTOMER_PKEY
     override fun getUniqueKeys(): List<UniqueKey<CustomerRecord>> = listOf(CUSTOMER_EMAIL_KEY)
 
-    private lateinit var _customerAccount: CustomerAccountPath
+    private lateinit var _customerWallet: CustomerWalletPath
 
     /**
      * Get the implicit to-many join path to the
-     * <code>public.customer_account</code> table
+     * <code>public.customer_wallet</code> table
      */
-    fun customerAccount(): CustomerAccountPath {
-        if (!this::_customerAccount.isInitialized)
-            _customerAccount = CustomerAccountPath(this, null, CUSTOMER_ACCOUNT__CUSTOMER_ACCOUNT_CUSTOMER_ID_FKEY.inverseKey)
+    fun customerWallet(): CustomerWalletPath {
+        if (!this::_customerWallet.isInitialized)
+            _customerWallet = CustomerWalletPath(this, null, CUSTOMER_WALLET__CUSTOMER_WALLET_CUSTOMER_ID_FKEY.inverseKey)
 
-        return _customerAccount;
+        return _customerWallet;
     }
 
-    val customerAccount: CustomerAccountPath
-        get(): CustomerAccountPath = customerAccount()
-
-    /**
-     * Get the implicit many-to-many join path to the
-     * <code>public.account</code> table
-     */
-    val account: AccountPath
-        get(): AccountPath = customerAccount().account()
+    val customerWallet: CustomerWalletPath
+        get(): CustomerWalletPath = customerWallet()
     override fun `as`(alias: String): Customer = Customer(DSL.name(alias), this)
     override fun `as`(alias: Name): Customer = Customer(alias, this)
     override fun `as`(alias: Table<*>): Customer = Customer(alias.qualifiedName, this)

@@ -24,7 +24,7 @@ open class LedgerEntryRecord() : UpdatableRecordImpl<LedgerEntryRecord>(LedgerEn
         set(value): Unit = set(0, value)
         get(): UUID? = get(0) as UUID?
 
-    open var accountId: UUID?
+    open var walletId: UUID?
         set(value): Unit = set(1, value)
         get(): UUID? = get(1) as UUID?
 
@@ -49,9 +49,9 @@ open class LedgerEntryRecord() : UpdatableRecordImpl<LedgerEntryRecord>(LedgerEn
     /**
      * Create a detached, initialised LedgerEntryRecord
      */
-    constructor(id: UUID? = null, accountId: UUID? = null, transferId: UUID? = null, amount: BigDecimal? = null, createdAt: LocalDateTime? = null): this() {
+    constructor(id: UUID? = null, walletId: UUID? = null, transferId: UUID? = null, amount: BigDecimal? = null, createdAt: LocalDateTime? = null): this() {
         this.id = id
-        this.accountId = accountId
+        this.walletId = walletId
         this.transferId = transferId
         this.amount = amount
         this.createdAt = createdAt

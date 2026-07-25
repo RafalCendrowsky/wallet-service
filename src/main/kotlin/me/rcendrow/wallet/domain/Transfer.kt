@@ -6,8 +6,8 @@ import java.util.*
 
 data class Transfer(
     val id: UUID,
-    val fromAccount: UUID,
-    val toAccount: UUID,
+    val fromWallet: UUID,
+    val toWallet: UUID,
     val amount: BigDecimal,
     val idempotencyKey: String,
     val createdAt: LocalDateTime,

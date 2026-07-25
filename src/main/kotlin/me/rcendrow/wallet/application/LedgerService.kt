@@ -20,7 +20,7 @@ class LedgerService(private val ledgerEntryRepository: LedgerEntryRepository) {
         return LedgerEntry(
             id = Generators.timeBasedEpochRandomGenerator().generate(),
             transferId = transfer.id,
-            accountId = if (debit) transfer.fromAccount else transfer.toAccount,
+            walletId = if (debit) transfer.fromWallet else transfer.toWallet,
             amount = if (debit) -transfer.amount else transfer.amount,
             createdAt = transfer.createdAt
         ).let { ledgerEntryRepository.create(it) }

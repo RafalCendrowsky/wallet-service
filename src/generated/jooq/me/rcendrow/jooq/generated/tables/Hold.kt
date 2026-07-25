@@ -12,10 +12,10 @@ import kotlin.collections.Collection
 import kotlin.collections.List
 
 import me.rcendrow.jooq.generated.Public
-import me.rcendrow.jooq.generated.indexes.HOLD_ACCOUNT_STATUS_IDX
+import me.rcendrow.jooq.generated.indexes.HOLD_WALLET_STATUS_IDX
 import me.rcendrow.jooq.generated.keys.HOLD_PKEY
-import me.rcendrow.jooq.generated.keys.HOLD__HOLD_ACCOUNT_ID_FKEY
-import me.rcendrow.jooq.generated.tables.Account.AccountPath
+import me.rcendrow.jooq.generated.keys.HOLD__HOLD_WALLET_ID_FKEY
+import me.rcendrow.jooq.generated.tables.Wallet.WalletPath
 import me.rcendrow.jooq.generated.tables.records.HoldRecord
 
 import org.jooq.Condition
@@ -85,9 +85,9 @@ open class Hold(
     val ID: TableField<HoldRecord, UUID?> = createField(DSL.name("id"), SQLDataType.UUID.nullable(false).defaultValue(DSL.field(DSL.raw("uuidv7()"), SQLDataType.UUID)), this, "")
 
     /**
-     * The column <code>public.hold.account_id</code>.
+     * The column <code>public.hold.wallet_id</code>.
      */
-    val ACCOUNT_ID: TableField<HoldRecord, UUID?> = createField(DSL.name("account_id"), SQLDataType.UUID.nullable(false), this, "")
+    val WALLET_ID: TableField<HoldRecord, UUID?> = createField(DSL.name("wallet_id"), SQLDataType.UUID.nullable(false), this, "")
 
     /**
      * The column <code>public.hold.amount</code>.
@@ -141,24 +141,24 @@ open class Hold(
         override fun `as`(alias: Table<*>): HoldPath = HoldPath(alias.qualifiedName, this)
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
-    override fun getIndexes(): List<Index> = listOf(HOLD_ACCOUNT_STATUS_IDX)
+    override fun getIndexes(): List<Index> = listOf(HOLD_WALLET_STATUS_IDX)
     override fun getPrimaryKey(): UniqueKey<HoldRecord> = HOLD_PKEY
-    override fun getReferences(): List<ForeignKey<HoldRecord, *>> = listOf(HOLD__HOLD_ACCOUNT_ID_FKEY)
+    override fun getReferences(): List<ForeignKey<HoldRecord, *>> = listOf(HOLD__HOLD_WALLET_ID_FKEY)
 
-    private lateinit var _account: AccountPath
+    private lateinit var _wallet: WalletPath
 
     /**
-     * Get the implicit join path to the <code>public.account</code> table.
+     * Get the implicit join path to the <code>public.wallet</code> table.
      */
-    fun account(): AccountPath {
-        if (!this::_account.isInitialized)
-            _account = AccountPath(this, HOLD__HOLD_ACCOUNT_ID_FKEY, null)
+    fun wallet(): WalletPath {
+        if (!this::_wallet.isInitialized)
+            _wallet = WalletPath(this, HOLD__HOLD_WALLET_ID_FKEY, null)
 
-        return _account;
+        return _wallet;
     }
 
-    val account: AccountPath
-        get(): AccountPath = account()
+    val wallet: WalletPath
+        get(): WalletPath = wallet()
     override fun `as`(alias: String): Hold = Hold(DSL.name(alias), this)
     override fun `as`(alias: Name): Hold = Hold(alias, this)
     override fun `as`(alias: Table<*>): Hold = Hold(alias.qualifiedName, this)

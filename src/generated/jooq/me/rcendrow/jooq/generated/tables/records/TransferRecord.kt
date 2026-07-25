@@ -24,11 +24,11 @@ open class TransferRecord() : UpdatableRecordImpl<TransferRecord>(Transfer.TRANS
         set(value): Unit = set(0, value)
         get(): UUID? = get(0) as UUID?
 
-    open var fromAccount: UUID?
+    open var fromWallet: UUID?
         set(value): Unit = set(1, value)
         get(): UUID? = get(1) as UUID?
 
-    open var toAccount: UUID?
+    open var toWallet: UUID?
         set(value): Unit = set(2, value)
         get(): UUID? = get(2) as UUID?
 
@@ -53,10 +53,10 @@ open class TransferRecord() : UpdatableRecordImpl<TransferRecord>(Transfer.TRANS
     /**
      * Create a detached, initialised TransferRecord
      */
-    constructor(id: UUID? = null, fromAccount: UUID? = null, toAccount: UUID? = null, amount: BigDecimal? = null, idempotencyKey: String? = null, createdAt: LocalDateTime? = null): this() {
+    constructor(id: UUID? = null, fromWallet: UUID? = null, toWallet: UUID? = null, amount: BigDecimal? = null, idempotencyKey: String? = null, createdAt: LocalDateTime? = null): this() {
         this.id = id
-        this.fromAccount = fromAccount
-        this.toAccount = toAccount
+        this.fromWallet = fromWallet
+        this.toWallet = toWallet
         this.amount = amount
         this.idempotencyKey = idempotencyKey
         this.createdAt = createdAt

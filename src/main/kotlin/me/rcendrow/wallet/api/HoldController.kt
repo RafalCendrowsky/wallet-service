@@ -18,7 +18,7 @@ class HoldController(private val holdService: HoldService) {
     @ResponseStatus(HttpStatus.CREATED)
     fun placeHold(@Valid @RequestBody request: CreateHoldRequest): HoldResponse {
         return holdService.placeHold(
-            accountId = request.accountId!!,
+            walletId = request.walletId!!,
             amount = request.amount!!,
             expiresAt = request.expiresAt!!,
         ).let { HoldResponse.from(it) }
@@ -34,7 +34,7 @@ class HoldController(private val holdService: HoldService) {
         @PathVariable id: UUID,
         @Valid @RequestBody request: CaptureHoldRequest,
     ): TransferResponse {
-        return holdService.captureHold(id, request.toAccount!!).let { TransferResponse.from(it) }
+        return holdService.captureHold(id, request.toWallet!!).let { TransferResponse.from(it) }
     }
 
     @PostMapping("/{id}/release")

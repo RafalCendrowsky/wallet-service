@@ -4,33 +4,18 @@
 package me.rcendrow.jooq.generated.tables.references
 
 
-import me.rcendrow.jooq.generated.tables.Account
-import me.rcendrow.jooq.generated.tables.AccountBalance
-import me.rcendrow.jooq.generated.tables.AccountBalanceQueue
 import me.rcendrow.jooq.generated.tables.Customer
-import me.rcendrow.jooq.generated.tables.CustomerAccount
+import me.rcendrow.jooq.generated.tables.CustomerWallet
 import me.rcendrow.jooq.generated.tables.FlywaySchemaHistory
 import me.rcendrow.jooq.generated.tables.Hold
 import me.rcendrow.jooq.generated.tables.LedgerEntry
-import me.rcendrow.jooq.generated.tables.ServiceAccount
+import me.rcendrow.jooq.generated.tables.ServiceWallet
 import me.rcendrow.jooq.generated.tables.Transfer
+import me.rcendrow.jooq.generated.tables.Wallet
+import me.rcendrow.jooq.generated.tables.WalletBalance
+import me.rcendrow.jooq.generated.tables.WalletBalanceQueue
 
 
-
-/**
- * The table <code>public.account</code>.
- */
-val ACCOUNT: Account = Account.ACCOUNT
-
-/**
- * The table <code>public.account_balance</code>.
- */
-val ACCOUNT_BALANCE: AccountBalance = AccountBalance.ACCOUNT_BALANCE
-
-/**
- * The table <code>public.account_balance_queue</code>.
- */
-val ACCOUNT_BALANCE_QUEUE: AccountBalanceQueue = AccountBalanceQueue.ACCOUNT_BALANCE_QUEUE
 
 /**
  * The table <code>public.customer</code>.
@@ -38,9 +23,9 @@ val ACCOUNT_BALANCE_QUEUE: AccountBalanceQueue = AccountBalanceQueue.ACCOUNT_BAL
 val CUSTOMER: Customer = Customer.CUSTOMER
 
 /**
- * The table <code>public.customer_account</code>.
+ * The table <code>public.customer_wallet</code>.
  */
-val CUSTOMER_ACCOUNT: CustomerAccount = CustomerAccount.CUSTOMER_ACCOUNT
+val CUSTOMER_WALLET: CustomerWallet = CustomerWallet.CUSTOMER_WALLET
 
 /**
  * The table <code>public.flyway_schema_history</code>.
@@ -58,11 +43,26 @@ val HOLD: Hold = Hold.HOLD
 val LEDGER_ENTRY: LedgerEntry = LedgerEntry.LEDGER_ENTRY
 
 /**
- * The table <code>public.service_account</code>.
+ * The table <code>public.service_wallet</code>.
  */
-val SERVICE_ACCOUNT: ServiceAccount = ServiceAccount.SERVICE_ACCOUNT
+val SERVICE_WALLET: ServiceWallet = ServiceWallet.SERVICE_WALLET
 
 /**
  * The table <code>public.transfer</code>.
  */
 val TRANSFER: Transfer = Transfer.TRANSFER
+
+/**
+ * The table <code>public.wallet</code>.
+ */
+val WALLET: Wallet = Wallet.WALLET
+
+/**
+ * The table <code>public.wallet_balance</code>.
+ */
+val WALLET_BALANCE: WalletBalance = WalletBalance.WALLET_BALANCE
+
+/**
+ * The table <code>public.wallet_balance_queue</code>.
+ */
+val WALLET_BALANCE_QUEUE: WalletBalanceQueue = WalletBalanceQueue.WALLET_BALANCE_QUEUE

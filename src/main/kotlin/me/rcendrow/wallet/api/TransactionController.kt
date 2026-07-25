@@ -18,7 +18,7 @@ class TransactionController(
     @ResponseStatus(HttpStatus.CREATED)
     fun deposit(@Valid @RequestBody request: CreateDepositRequest): TransferResponse {
         return transferService.createDeposit(
-            accountId = request.accountId!!,
+            walletId = request.walletId!!,
             amount = request.amount!!,
             idempotencyKey = request.idempotencyKey!!,
         ).let { TransferResponse.from(it) }
@@ -28,7 +28,7 @@ class TransactionController(
     @ResponseStatus(HttpStatus.CREATED)
     fun withdraw(@Valid @RequestBody request: CreateWithdrawalRequest): TransferResponse {
         return transferService.createWithdrawal(
-            accountId = request.accountId!!,
+            walletId = request.walletId!!,
             amount = request.amount!!,
             idempotencyKey = request.idempotencyKey!!,
         ).let { TransferResponse.from(it) }

@@ -1,13 +1,13 @@
 package me.rcendrow.wallet.application
 
 import com.fasterxml.uuid.Generators
-import me.rcendrow.wallet.application.exception.AccountStatusException
+import me.rcendrow.wallet.application.exception.WalletStatusException
 import me.rcendrow.wallet.application.exception.HoldStatusException
 import me.rcendrow.wallet.application.exception.NotFoundException
 import me.rcendrow.wallet.domain.Hold
 import me.rcendrow.wallet.domain.HoldStatus
 import me.rcendrow.wallet.domain.Transfer
-import me.rcendrow.wallet.domain.account.AccountStatus
+import me.rcendrow.wallet.domain.wallet.WalletStatus
 import me.rcendrow.wallet.persistence.HoldRepository
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
@@ -19,21 +19,21 @@ import java.util.*
 @Service
 class HoldService(
     private val holdRepository: HoldRepository,
-    private val accountService: AccountService,
+    private val walletService: WalletService,
     private val transferService: TransferService,
 ) {
 
     @Transactional
-    fun placeHold(accountId: UUID, amount: BigDecimal, expiresAt: LocalDateTime): Hold {
-        val account = accountService.getCustomerAccount(accountId)
-        if (account.status != AccountStatus.ACTIVE) {
-            throw AccountStatusException(accountId, account.status)
+    fun placeHold(walletId: UUID, amount: BigDecimal, expiresAt: LocalDateTime): Hold {
+        val wallet = walletService.getCustomerWallet(walletId)
+        if (wallet.status != WalletStatus.ACTIVE) {
+            throw WalletStatusException(walletId, wallet.status)
         }
-        accountService.lockAndVerifyBalance(account, amount)
+        walletService.lockAndVerifyBalance(wallet, amount)
 
         return Hold(
             id = Generators.timeBasedEpochRandomGenerator().generate(),
-            accountId = accountId,
+            walletId = walletId,
             amount = amount,
             status = HoldStatus.ACTIVE,
             expiresAt = expiresAt,
@@ -42,7 +42,7 @@ class HoldService(
     }
 
     @Transactional
-    fun captureHold(holdId: UUID, toAccount: UUID): Transfer {
+    fun captureHold(holdId: UUID, toWallet: UUID): Transfer {
         val hold = findById(holdId)
 
         when (hold.status) {
@@ -55,8 +55,8 @@ class HoldService(
 
 
         val transfer = transferService.createTransfer(
-            fromAccount = hold.accountId,
-            toAccount = toAccount,
+            fromWallet = hold.walletId,
+            toWallet = toWallet,
             amount = hold.amount,
             idempotencyKey = "hold-$holdId",
         )

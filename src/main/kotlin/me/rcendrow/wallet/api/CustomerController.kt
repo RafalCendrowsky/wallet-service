@@ -1,10 +1,10 @@
 package me.rcendrow.wallet.api
 
 import jakarta.validation.Valid
-import me.rcendrow.wallet.api.dto.AccountResponse
+import me.rcendrow.wallet.api.dto.WalletResponse
 import me.rcendrow.wallet.api.dto.CreateCustomerRequest
 import me.rcendrow.wallet.api.dto.CustomerResponse
-import me.rcendrow.wallet.application.AccountService
+import me.rcendrow.wallet.application.WalletService
 import me.rcendrow.wallet.application.CustomerService
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
@@ -14,7 +14,7 @@ import java.util.*
 @RequestMapping("/customers")
 class CustomerController(
     private val customerService: CustomerService,
-    private val accountService: AccountService,
+    private val walletService: WalletService,
 ) {
 
     @PostMapping
@@ -28,8 +28,8 @@ class CustomerController(
         return customerService.getCustomer(id).let { CustomerResponse.from(it) }
     }
 
-    @GetMapping("/{id}/accounts")
-    fun getCustomerAccounts(@PathVariable id: UUID): List<AccountResponse> {
-        return accountService.findAccountsByCustomer(id).map { AccountResponse.from(it) }
+    @GetMapping("/{id}/wallets")
+    fun getCustomerWallets(@PathVariable id: UUID): List<WalletResponse> {
+        return walletService.findWalletsByCustomer(id).map { WalletResponse.from(it) }
     }
 }

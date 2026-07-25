@@ -5,5 +5,5 @@ import java.util.*
 
 data class CaptureHoldRequest(
     @field:NotNull
-    val toAccount: UUID?,
+    val toWallet: UUID?,
 )

@@ -12,13 +12,13 @@ import kotlin.collections.Collection
 import kotlin.collections.List
 
 import me.rcendrow.jooq.generated.Public
-import me.rcendrow.jooq.generated.keys.ACCOUNT_BALANCE__ACCOUNT_BALANCE_LAST_ENTRY_ID_FKEY
-import me.rcendrow.jooq.generated.keys.LEDGER_ENTRY__LEDGER_ACCOUNT_ID_FKEY
-import me.rcendrow.jooq.generated.keys.LEDGER_ENTRY__LEDGER_TRANSFER_ID_FKEY
+import me.rcendrow.jooq.generated.keys.LEDGER_ENTRY__LEDGER_ENTRY_TRANSFER_ID_FKEY
+import me.rcendrow.jooq.generated.keys.LEDGER_ENTRY__LEDGER_ENTRY_WALLET_ID_FKEY
 import me.rcendrow.jooq.generated.keys.LEDGER_PKEY
-import me.rcendrow.jooq.generated.tables.Account.AccountPath
-import me.rcendrow.jooq.generated.tables.AccountBalance.AccountBalancePath
+import me.rcendrow.jooq.generated.keys.WALLET_BALANCE__WALLET_BALANCE_LAST_ENTRY_ID_FKEY
 import me.rcendrow.jooq.generated.tables.Transfer.TransferPath
+import me.rcendrow.jooq.generated.tables.Wallet.WalletPath
+import me.rcendrow.jooq.generated.tables.WalletBalance.WalletBalancePath
 import me.rcendrow.jooq.generated.tables.records.LedgerEntryRecord
 
 import org.jooq.Condition
@@ -87,9 +87,9 @@ open class LedgerEntry(
     val ID: TableField<LedgerEntryRecord, UUID?> = createField(DSL.name("id"), SQLDataType.UUID.nullable(false).defaultValue(DSL.field(DSL.raw("uuidv7()"), SQLDataType.UUID)), this, "")
 
     /**
-     * The column <code>public.ledger_entry.account_id</code>.
+     * The column <code>public.ledger_entry.wallet_id</code>.
      */
-    val ACCOUNT_ID: TableField<LedgerEntryRecord, UUID?> = createField(DSL.name("account_id"), SQLDataType.UUID.nullable(false), this, "")
+    val WALLET_ID: TableField<LedgerEntryRecord, UUID?> = createField(DSL.name("wallet_id"), SQLDataType.UUID.nullable(false), this, "")
 
     /**
      * The column <code>public.ledger_entry.transfer_id</code>.
@@ -139,22 +139,7 @@ open class LedgerEntry(
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
     override fun getPrimaryKey(): UniqueKey<LedgerEntryRecord> = LEDGER_PKEY
-    override fun getReferences(): List<ForeignKey<LedgerEntryRecord, *>> = listOf(LEDGER_ENTRY__LEDGER_ACCOUNT_ID_FKEY, LEDGER_ENTRY__LEDGER_TRANSFER_ID_FKEY)
-
-    private lateinit var _account: AccountPath
-
-    /**
-     * Get the implicit join path to the <code>public.account</code> table.
-     */
-    fun account(): AccountPath {
-        if (!this::_account.isInitialized)
-            _account = AccountPath(this, LEDGER_ENTRY__LEDGER_ACCOUNT_ID_FKEY, null)
-
-        return _account;
-    }
-
-    val account: AccountPath
-        get(): AccountPath = account()
+    override fun getReferences(): List<ForeignKey<LedgerEntryRecord, *>> = listOf(LEDGER_ENTRY__LEDGER_ENTRY_TRANSFER_ID_FKEY, LEDGER_ENTRY__LEDGER_ENTRY_WALLET_ID_FKEY)
 
     private lateinit var _transfer: TransferPath
 
@@ -163,7 +148,7 @@ open class LedgerEntry(
      */
     fun transfer(): TransferPath {
         if (!this::_transfer.isInitialized)
-            _transfer = TransferPath(this, LEDGER_ENTRY__LEDGER_TRANSFER_ID_FKEY, null)
+            _transfer = TransferPath(this, LEDGER_ENTRY__LEDGER_ENTRY_TRANSFER_ID_FKEY, null)
 
         return _transfer;
     }
@@ -171,21 +156,36 @@ open class LedgerEntry(
     val transfer: TransferPath
         get(): TransferPath = transfer()
 
-    private lateinit var _accountBalance: AccountBalancePath
+    private lateinit var _wallet: WalletPath
+
+    /**
+     * Get the implicit join path to the <code>public.wallet</code> table.
+     */
+    fun wallet(): WalletPath {
+        if (!this::_wallet.isInitialized)
+            _wallet = WalletPath(this, LEDGER_ENTRY__LEDGER_ENTRY_WALLET_ID_FKEY, null)
+
+        return _wallet;
+    }
+
+    val wallet: WalletPath
+        get(): WalletPath = wallet()
+
+    private lateinit var _walletBalance: WalletBalancePath
 
     /**
      * Get the implicit to-many join path to the
-     * <code>public.account_balance</code> table
+     * <code>public.wallet_balance</code> table
      */
-    fun accountBalance(): AccountBalancePath {
-        if (!this::_accountBalance.isInitialized)
-            _accountBalance = AccountBalancePath(this, null, ACCOUNT_BALANCE__ACCOUNT_BALANCE_LAST_ENTRY_ID_FKEY.inverseKey)
+    fun walletBalance(): WalletBalancePath {
+        if (!this::_walletBalance.isInitialized)
+            _walletBalance = WalletBalancePath(this, null, WALLET_BALANCE__WALLET_BALANCE_LAST_ENTRY_ID_FKEY.inverseKey)
 
-        return _accountBalance;
+        return _walletBalance;
     }
 
-    val accountBalance: AccountBalancePath
-        get(): AccountBalancePath = accountBalance()
+    val walletBalance: WalletBalancePath
+        get(): WalletBalancePath = walletBalance()
     override fun `as`(alias: String): LedgerEntry = LedgerEntry(DSL.name(alias), this)
     override fun `as`(alias: Name): LedgerEntry = LedgerEntry(alias, this)
     override fun `as`(alias: Table<*>): LedgerEntry = LedgerEntry(alias.qualifiedName, this)

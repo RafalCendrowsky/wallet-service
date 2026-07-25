@@ -6,7 +6,7 @@ import java.util.*
 
 data class Hold(
     val id: UUID,
-    val accountId: UUID,
+    val walletId: UUID,
     val amount: BigDecimal,
     val status: HoldStatus,
     val expiresAt: LocalDateTime,
