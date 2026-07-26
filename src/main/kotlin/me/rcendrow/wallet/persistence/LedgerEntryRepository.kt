@@ -24,19 +24,6 @@ class LedgerEntryRepository(private val db: DSLContext) {
             .fetchOneInto(BigDecimal::class.java)!!
     }
 
-    fun findAllBalances(): Map<UUID, BigDecimal> {
-        return db.select(
-            LEDGER_ENTRY.WALLET_ID,
-            DSL.coalesce(DSL.sum(LEDGER_ENTRY.AMOUNT), BigDecimal.ZERO).`as`("balance")
-        )
-            .from(LEDGER_ENTRY)
-            .groupBy(LEDGER_ENTRY.WALLET_ID)
-            .fetch()
-            .associate { record ->
-                record[LEDGER_ENTRY.WALLET_ID]!! to record["balance", BigDecimal::class.java]!!
-            }
-    }
-
     fun create(entry: LedgerEntry): LedgerEntry {
         return db.insertInto(LEDGER_ENTRY)
             .set(LEDGER_ENTRY.ID, entry.id)

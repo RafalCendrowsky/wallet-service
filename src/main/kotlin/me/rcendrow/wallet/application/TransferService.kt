@@ -3,10 +3,10 @@ package me.rcendrow.wallet.application
 import com.fasterxml.uuid.Generators
 import me.rcendrow.wallet.application.exception.DuplicateIdempotencyKeyException
 import me.rcendrow.wallet.domain.Transfer
-import me.rcendrow.wallet.domain.wallet.Wallet
-import me.rcendrow.wallet.domain.wallet.WalletStatus
 import me.rcendrow.wallet.domain.wallet.CustomerWallet
 import me.rcendrow.wallet.domain.wallet.ServiceWalletRole
+import me.rcendrow.wallet.domain.wallet.Wallet
+import me.rcendrow.wallet.domain.wallet.WalletStatus
 import me.rcendrow.wallet.persistence.TransferRepository
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -25,8 +25,8 @@ class TransferService(
 ) {
 
     @Transactional
-    fun createDeposit(walletId: UUID, amount: BigDecimal, idempotencyKey: String): Transfer {
-        val wallet = walletService.getCustomerWallet(walletId)
+    fun createDeposit(customerId: UUID, walletId: UUID, amount: BigDecimal, idempotencyKey: String): Transfer {
+        val wallet = walletService.getCustomerWallet(customerId, walletId)
         val systemWallet = walletService.getServiceWalletByRole(ServiceWalletRole.EXTERNAL_SETTLEMENT)
         return createTransfer(
             fromWallet = systemWallet,
@@ -37,8 +37,8 @@ class TransferService(
     }
 
     @Transactional
-    fun createWithdrawal(walletId: UUID, amount: BigDecimal, idempotencyKey: String): Transfer {
-        val wallet = walletService.getCustomerWallet(walletId)
+    fun createWithdrawal(customerId: UUID, walletId: UUID, amount: BigDecimal, idempotencyKey: String): Transfer {
+        val wallet = walletService.getCustomerWallet(customerId, walletId)
         val systemWallet = walletService.getServiceWalletByRole(ServiceWalletRole.EXTERNAL_SETTLEMENT)
         return createTransfer(
             fromWallet = wallet,
@@ -50,13 +50,14 @@ class TransferService(
 
     @Transactional
     fun createTransfer(
+        fromCustomerId: UUID,
         fromWallet: UUID,
-        toWallet: UUID,
+        toCustomerHandle: String,
         amount: BigDecimal,
         idempotencyKey: String,
     ): Transfer {
-        val from = walletService.getCustomerWallet(fromWallet)
-        val to = walletService.getCustomerWallet(toWallet)
+        val from = walletService.getCustomerWallet(fromCustomerId, fromWallet)
+        val to = walletService.getCustomerWalletByCustomerHandle(toCustomerHandle)
         return createTransfer(
             fromWallet = from,
             toWallet = to,
@@ -103,8 +104,7 @@ class TransferService(
             return e.existing
         }
 
-        ledgerService.createCreditEntry(transfer)
-        ledgerService.createDebitEntry(transfer)
+        ledgerService.createEntries(transfer)
 
         walletBalanceService.markWalletForRefresh(fromWallet.id)
         walletBalanceService.markWalletForRefresh(toWallet.id)
@@ -123,8 +123,8 @@ class TransferService(
     }
 
     @Transactional(readOnly = true)
-    fun getWalletTransfers(walletId: UUID, pageable: Pageable): Page<Transfer> {
-        walletService.getCustomerWallet(walletId)
+    fun getWalletTransfers(customerId: UUID, walletId: UUID, pageable: Pageable): Page<Transfer> {
+        walletService.getCustomerWallet(customerId, walletId)
         return transferRepository.findByWalletId(walletId, pageable)
     }
 }

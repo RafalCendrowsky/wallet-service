@@ -1,9 +1,8 @@
 package me.rcendrow.wallet.api.dto
 
-import jakarta.validation.constraints.NotNull
-import java.util.*
+import jakarta.validation.constraints.NotBlank
 
 data class CaptureHoldRequest(
-    @field:NotNull
-    val toWallet: UUID?,
+    @field:NotBlank
+    val toCustomerHandle: String?,
 )

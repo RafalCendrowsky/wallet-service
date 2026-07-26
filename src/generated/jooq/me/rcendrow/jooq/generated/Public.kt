@@ -7,6 +7,7 @@ package me.rcendrow.jooq.generated
 import kotlin.collections.List
 
 import me.rcendrow.jooq.generated.tables.Customer
+import me.rcendrow.jooq.generated.tables.CustomerIdentity
 import me.rcendrow.jooq.generated.tables.CustomerWallet
 import me.rcendrow.jooq.generated.tables.FlywaySchemaHistory
 import me.rcendrow.jooq.generated.tables.Hold
@@ -39,6 +40,11 @@ open class Public : SchemaImpl("public", DefaultCatalog.DEFAULT_CATALOG) {
      * The table <code>public.customer</code>.
      */
     val CUSTOMER: Customer get() = Customer.CUSTOMER
+
+    /**
+     * The table <code>public.customer_identity</code>.
+     */
+    val CUSTOMER_IDENTITY: CustomerIdentity get() = CustomerIdentity.CUSTOMER_IDENTITY
 
     /**
      * The table <code>public.customer_wallet</code>.
@@ -89,6 +95,7 @@ open class Public : SchemaImpl("public", DefaultCatalog.DEFAULT_CATALOG) {
 
     override fun getTables(): List<Table<*>> = listOf(
         Customer.CUSTOMER,
+        CustomerIdentity.CUSTOMER_IDENTITY,
         CustomerWallet.CUSTOMER_WALLET,
         FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY,
         Hold.HOLD,

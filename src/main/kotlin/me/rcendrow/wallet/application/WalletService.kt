@@ -4,9 +4,9 @@ import com.fasterxml.uuid.Generators
 import me.rcendrow.wallet.application.exception.InsufficientFundsException
 import me.rcendrow.wallet.application.exception.NotFoundException
 import me.rcendrow.wallet.domain.wallet.*
-import me.rcendrow.wallet.persistence.wallet.WalletBalanceRepository
 import me.rcendrow.wallet.persistence.wallet.CustomerWalletRepository
 import me.rcendrow.wallet.persistence.wallet.ServiceWalletRepository
+import me.rcendrow.wallet.persistence.wallet.WalletBalanceRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
@@ -28,20 +28,36 @@ class WalletService(
     }
 
     @Transactional(readOnly = true)
-    fun getCustomerWallet(id: UUID): CustomerWallet = findCustomerWalletById(id)
+    fun getCustomerWallet(customerId: UUID, walletId: UUID): CustomerWallet {
+        return customerWalletRepository.findByCustomerIdAndWalletId(customerId, walletId)
+            ?: throw NotFoundException("CustomerWallet", walletId)
+    }
+
+    @Transactional(readOnly = true)
+    fun getCustomerWalletByCustomerHandle(handle: String): CustomerWallet {
+        val customer = customerService.getCustomerByHandle(handle)
+        return customerWalletRepository.findByCustomerId(customer.id)
+            ?: throw NotFoundException("Wallet for customer", customer.id)
+    }
+
+    @Transactional
+    fun findOrCreateCustomerWallet(customerId: UUID): CustomerWallet {
+        customerService.getCustomer(customerId)
+        return customerWalletRepository.findByCustomerId(customerId)
+            ?: createCustomerWallet(customerId)
+    }
 
     @Transactional
     fun createCustomerWallet(customerId: UUID): CustomerWallet {
         customerService.getCustomer(customerId)
-        return CustomerWallet(
+        val wallet = CustomerWallet(
             id = Generators.timeBasedEpochRandomGenerator().generate(),
             customerId = customerId,
             status = WalletStatus.ACTIVE,
             createdAt = LocalDateTime.now(),
-        ).let {
-            customerWalletRepository.create(it)
+        )
+        return customerWalletRepository.create(wallet).also {
             walletBalanceRepository.create(it.id)
-            it
         }
     }
 
@@ -55,21 +71,26 @@ class WalletService(
     }
 
     @Transactional(readOnly = true)
-    fun getBalance(id: UUID): WalletBalance {
-        findCustomerWalletById(id)
-        return walletBalanceService.findBalance(id)
+    fun getBalance(customerId: UUID, walletId: UUID): WalletBalance {
+        getCustomerWallet(customerId, walletId)
+        return walletBalanceService.findBalance(walletId)
     }
 
     @Transactional
-    fun updateWalletStatus(id: UUID, status: WalletStatus): CustomerWallet {
-        val wallet = findCustomerWalletById(id)
+    fun updateWalletStatus(customerId: UUID, walletId: UUID, status: WalletStatus): CustomerWallet {
+        val wallet = getCustomerWallet(customerId, walletId)
+        wallet.verifyStatusNot(WalletStatus.CLOSED)
+        return customerWalletRepository.updateStatus(wallet, status)
+    }
+
+    @Transactional
+    fun updateWalletStatus(walletId: UUID, status: WalletStatus): CustomerWallet {
+        val wallet = customerWalletRepository.findById(walletId)
+            ?: throw NotFoundException("CustomerWallet", walletId)
         wallet.verifyStatusNot(WalletStatus.CLOSED)
         return customerWalletRepository.updateStatus(wallet, status)
     }
 
     fun getServiceWalletByRole(role: ServiceWalletRole): ServiceWallet =
         serviceWalletRepository.findByRole(role)
-
-    private fun findCustomerWalletById(id: UUID): CustomerWallet =
-        customerWalletRepository.findById(id) ?: throw NotFoundException("CustomerWallet", id)
 }

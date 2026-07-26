@@ -1,143 +1,197 @@
 package me.rcendrow.wallet
 
-import me.rcendrow.wallet.api.dto.*
-import org.junit.jupiter.api.BeforeEach
+import me.rcendrow.wallet.api.dto.CreateCustomerRequest
+import me.rcendrow.wallet.api.dto.CreateTransferRequest
+import me.rcendrow.wallet.api.dto.CustomerResponse
+import me.rcendrow.wallet.api.dto.WalletResponse
+import me.rcendrow.wallet.domain.CustomerPrincipal
+import me.rcendrow.wallet.domain.PendingPrincipal
+import me.rcendrow.wallet.infrastructure.CustomerAuthenticationToken
 import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
-import org.springframework.test.web.servlet.client.RestTestClient
-import org.springframework.test.web.servlet.client.expectBody
-import org.springframework.web.context.WebApplicationContext
+import org.springframework.security.core.authority.SimpleGrantedAuthority
+import org.springframework.security.oauth2.jwt.Jwt
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import tools.jackson.databind.json.JsonMapper
 import java.math.BigDecimal
+import java.time.Instant
 import java.util.*
 
 @Import(TestcontainersConfiguration::class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
+@AutoConfigureMockMvc
 class WalletServiceWebTests {
 
-    private lateinit var rest: RestTestClient
+    @Autowired
+    private lateinit var mockMvc: MockMvc
 
-    @BeforeEach
-    fun setUp(context: WebApplicationContext) {
-        rest = RestTestClient.bindToApplicationContext(context).build()
+    @Autowired
+    private lateinit var jsonMapper: JsonMapper
+
+    private val testIssuer = "test-issuer"
+    private val testExternalId = "test-subject"
+    private val otherExternalId = "other-subject"
+    private val testHandle = "testuser"
+
+    private fun pendingPrincipal(externalId: String = testExternalId) = authentication(
+        CustomerAuthenticationToken(
+            jwt = Jwt.withTokenValue("token")
+                .header("alg", "RS256")
+                .claim("sub", externalId)
+                .claim("iss", testIssuer)
+                .claim("email", "$externalId@test.com")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build(),
+            authorities = listOf(SimpleGrantedAuthority("ROLE_PENDING")),
+            principal = PendingPrincipal(testIssuer, externalId, "$externalId@test.com"),
+        )
+    )
+
+    private fun customerPrincipal(customerId: UUID, externalId: String = testExternalId) = authentication(
+        CustomerAuthenticationToken(
+            jwt = Jwt.withTokenValue("token")
+                .header("alg", "RS256")
+                .claim("sub", externalId)
+                .claim("iss", testIssuer)
+                .claim("email", "$externalId@test.com")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build(),
+            authorities = listOf(SimpleGrantedAuthority("ROLE_USER")),
+            principal = CustomerPrincipal(customerId, testIssuer, externalId, "$externalId@test.com"),
+        )
+    )
+
+    private fun createCustomer(handle: String, externalId: String = testExternalId): CustomerResponse {
+        val result = mockMvc.perform(
+            post("/customers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(CreateCustomerRequest(handle)))
+                .with(pendingPrincipal(externalId))
+        )
+            .andExpect(status().isCreated)
+            .andReturn()
+
+        return jsonMapper.readValue(result.response.contentAsString, CustomerResponse::class.java)
+    }
+
+    private fun createWallet(customerId: UUID, externalId: String = testExternalId): WalletResponse {
+        val result = mockMvc.perform(
+            post("/wallets")
+                .with(customerPrincipal(customerId, externalId))
+        )
+            .andExpect(status().isCreated)
+            .andReturn()
+
+        return jsonMapper.readValue(result.response.contentAsString, WalletResponse::class.java)
     }
 
     @Test
     fun `should return 201 when creating customer`() {
-        rest.post()
-            .uri("/customers")
-            .body(CreateCustomerRequest(email = "alice@test.com"))
-            .exchange()
-            .expectStatus().isCreated
+        mockMvc.perform(
+            post("/customers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(CreateCustomerRequest("new-user")))
+                .with(pendingPrincipal("new-user"))
+        )
+            .andExpect(status().isCreated)
     }
 
     @Test
     fun `should return 201 when creating wallet`() {
-        val customerId = createCustomer("wallet-owner@test.com").id
+        val customer = createCustomer(testHandle)
 
-        rest.post()
-            .uri("/wallets")
-            .body(CreateWalletRequest(customerId = customerId))
-            .exchange()
-            .expectStatus().isCreated
+        mockMvc.perform(post("/wallets").with(customerPrincipal(customer.id)))
+            .andExpect(status().isCreated)
     }
 
     @Test
     fun `should return 200 for existing wallet`() {
-        val customerId = createCustomer("existing@test.com").id
-        val id = createWallet(customerId).id
+        val customer = createCustomer(testHandle)
+        val wallet = createWallet(customer.id)
 
-        rest.get()
-            .uri("/wallets/$id")
-            .exchange()
-            .expectStatus().isOk
+        mockMvc.perform(get("/wallets/${wallet.id}").with(customerPrincipal(customer.id)))
+            .andExpect(status().isOk)
     }
 
     @Test
     fun `should return 404 for unknown wallet`() {
-        rest.get()
-            .uri("/wallets/${UUID.randomUUID()}")
-            .exchange()
-            .expectStatus().isNotFound
+        val customer = createCustomer(testHandle)
+
+        mockMvc.perform(
+            get("/wallets/${UUID.randomUUID()}")
+                .with(customerPrincipal(customer.id))
+        )
+            .andExpect(status().isNotFound)
     }
 
     @Test
     fun `should return 422 for insufficient funds`() {
-        val customer1Id = createCustomer("poor@test.com").id
-        val customer2Id = createCustomer("rich@test.com").id
-        val senderId = createWallet(customer1Id).id
-        val receiverId = createWallet(customer2Id).id
+        val poorCustomer = createCustomer(testHandle)
+        val richCustomer = createCustomer("rich", otherExternalId)
 
-        rest.post()
-            .uri("/transfers")
-            .body(CreateTransferRequest(senderId, receiverId, BigDecimal("1.00"), UUID.randomUUID().toString()))
-            .exchange()
-            .expectStatus().isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT)
-    }
+        val poorWallet = createWallet(poorCustomer.id)
+        createWallet(richCustomer.id, otherExternalId)
 
-    @Test
-    fun `should return 400 when customerId is null`() {
-        rest.post()
-            .uri("/wallets")
-            .contentType(MediaType.APPLICATION_JSON)
-            .body("""{"customerId": null}""")
-            .exchange()
-            .expectStatus().isBadRequest
+        mockMvc.perform(
+            post("/transfers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    jsonMapper.writeValueAsString(
+                        CreateTransferRequest(
+                            fromWallet = poorWallet.id,
+                            toCustomerHandle = "rich",
+                            amount = BigDecimal("1.00"),
+                            idempotencyKey = UUID.randomUUID().toString(),
+                        )
+                    )
+                )
+                .with(customerPrincipal(poorCustomer.id))
+        )
+            .andExpect(status().`is`(HttpStatus.UNPROCESSABLE_CONTENT.value()))
     }
 
     @Test
     fun `should return 400 when transfer fields are null`() {
-        rest.post()
-            .uri("/transfers")
-            .contentType(MediaType.APPLICATION_JSON)
-            .body("""{"fromWallet": null, "toWallet": null, "amount": null, "idempotencyKey": null}""")
-            .exchange()
-            .expectStatus().isBadRequest
+        val customer = createCustomer(testHandle)
+
+        mockMvc.perform(
+            post("/transfers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"fromWallet": null, "toCustomerHandle": null, "amount": null, "idempotencyKey": null}""")
+                .with(customerPrincipal(customer.id))
+        )
+            .andExpect(status().isBadRequest)
     }
 
     @Test
     fun `should return 200 for balance endpoint`() {
-        val customerId = createCustomer("balance-test@test.com").id
-        val id = createWallet(customerId).id
+        val customer = createCustomer(testHandle)
+        val wallet = createWallet(customer.id)
 
-        rest.get()
-            .uri("/wallets/$id/balance")
-            .exchange()
-            .expectStatus().isOk
+        mockMvc.perform(get("/wallets/${wallet.id}/balance").with(customerPrincipal(customer.id)))
+            .andExpect(status().isOk)
     }
 
     @Test
     fun `should return 200 for empty transfer history`() {
-        val customerId = createCustomer("history@test.com").id
-        val id = createWallet(customerId).id
+        val customer = createCustomer(testHandle)
+        val wallet = createWallet(customer.id)
 
-        rest.get()
-            .uri("/wallets/$id/transfers?page=0&size=3")
-            .exchange()
-            .expectStatus().isOk
-    }
-
-    private fun createCustomer(email: String): CustomerResponse {
-        return rest.post()
-            .uri("/customers")
-            .body(CreateCustomerRequest(email = email))
-            .exchange()
-            .expectStatus().isCreated
-            .expectBody<CustomerResponse>()
-            .returnResult()
-            .responseBody!!
-    }
-
-    private fun createWallet(customerId: UUID): WalletResponse {
-        return rest.post()
-            .uri("/wallets")
-            .body(CreateWalletRequest(customerId = customerId))
-            .exchange()
-            .expectStatus().isCreated
-            .expectBody<WalletResponse>()
-            .returnResult()
-            .responseBody!!
+        mockMvc.perform(
+            get("/wallets/${wallet.id}/transfers?page=0&size=3")
+                .with(customerPrincipal(customer.id))
+        )
+            .andExpect(status().isOk)
     }
 }

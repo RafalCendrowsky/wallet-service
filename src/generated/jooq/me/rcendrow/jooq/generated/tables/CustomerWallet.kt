@@ -13,6 +13,7 @@ import me.rcendrow.jooq.generated.Public
 import me.rcendrow.jooq.generated.keys.CUSTOMER_WALLET_PKEY
 import me.rcendrow.jooq.generated.keys.CUSTOMER_WALLET__CUSTOMER_WALLET_CUSTOMER_ID_FKEY
 import me.rcendrow.jooq.generated.keys.CUSTOMER_WALLET__CUSTOMER_WALLET_WALLET_ID_FKEY
+import me.rcendrow.jooq.generated.keys.UQ_CUSTOMER_WALLET_CUSTOMER_ID
 import me.rcendrow.jooq.generated.tables.Customer.CustomerPath
 import me.rcendrow.jooq.generated.tables.Wallet.WalletPath
 import me.rcendrow.jooq.generated.tables.records.CustomerWalletRecord
@@ -120,6 +121,7 @@ open class CustomerWallet(
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
     override fun getPrimaryKey(): UniqueKey<CustomerWalletRecord> = CUSTOMER_WALLET_PKEY
+    override fun getUniqueKeys(): List<UniqueKey<CustomerWalletRecord>> = listOf(UQ_CUSTOMER_WALLET_CUSTOMER_ID)
     override fun getReferences(): List<ForeignKey<CustomerWalletRecord, *>> = listOf(CUSTOMER_WALLET__CUSTOMER_WALLET_CUSTOMER_ID_FKEY, CUSTOMER_WALLET__CUSTOMER_WALLET_WALLET_ID_FKEY)
 
     private lateinit var _customer: CustomerPath

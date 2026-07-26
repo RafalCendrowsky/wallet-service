@@ -62,12 +62,4 @@ class TransferRepository(private val db: DSLContext) {
             throw e
         }
     }
-
-    fun update(transfer: Transfer): Transfer {
-        return db.update(TRANSFER)
-            .set(TRANSFER.AMOUNT, transfer.amount)
-            .where(TRANSFER.ID.eq(transfer.id))
-            .returning()
-            .fetchSingleInto(Transfer::class.java)
-    }
 }

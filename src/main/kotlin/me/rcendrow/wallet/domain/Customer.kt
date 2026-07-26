@@ -5,6 +5,6 @@ import java.util.*
 
 data class Customer(
     val id: UUID,
-    val email: String,
+    val handle: String,
     val createdAt: LocalDateTime,
 )

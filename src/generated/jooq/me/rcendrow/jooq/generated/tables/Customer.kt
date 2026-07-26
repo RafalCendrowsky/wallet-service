@@ -11,9 +11,11 @@ import kotlin.collections.Collection
 import kotlin.collections.List
 
 import me.rcendrow.jooq.generated.Public
-import me.rcendrow.jooq.generated.keys.CUSTOMER_EMAIL_KEY
+import me.rcendrow.jooq.generated.keys.CUSTOMER_HANDLE_KEY
+import me.rcendrow.jooq.generated.keys.CUSTOMER_IDENTITY__CUSTOMER_IDENTITY_CUSTOMER_ID_FKEY
 import me.rcendrow.jooq.generated.keys.CUSTOMER_PKEY
 import me.rcendrow.jooq.generated.keys.CUSTOMER_WALLET__CUSTOMER_WALLET_CUSTOMER_ID_FKEY
+import me.rcendrow.jooq.generated.tables.CustomerIdentity.CustomerIdentityPath
 import me.rcendrow.jooq.generated.tables.CustomerWallet.CustomerWalletPath
 import me.rcendrow.jooq.generated.tables.records.CustomerRecord
 
@@ -83,14 +85,14 @@ open class Customer(
     val ID: TableField<CustomerRecord, UUID?> = createField(DSL.name("id"), SQLDataType.UUID.nullable(false).defaultValue(DSL.field(DSL.raw("uuidv7()"), SQLDataType.UUID)), this, "")
 
     /**
-     * The column <code>public.customer.email</code>.
-     */
-    val EMAIL: TableField<CustomerRecord, String?> = createField(DSL.name("email"), SQLDataType.VARCHAR(255).nullable(false), this, "")
-
-    /**
      * The column <code>public.customer.created_at</code>.
      */
     val CREATED_AT: TableField<CustomerRecord, LocalDateTime?> = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "")
+
+    /**
+     * The column <code>public.customer.handle</code>.
+     */
+    val HANDLE: TableField<CustomerRecord, String?> = createField(DSL.name("handle"), SQLDataType.VARCHAR(255).nullable(false), this, "")
 
     private constructor(alias: Name, aliased: Table<CustomerRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<CustomerRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
@@ -125,7 +127,23 @@ open class Customer(
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
     override fun getPrimaryKey(): UniqueKey<CustomerRecord> = CUSTOMER_PKEY
-    override fun getUniqueKeys(): List<UniqueKey<CustomerRecord>> = listOf(CUSTOMER_EMAIL_KEY)
+    override fun getUniqueKeys(): List<UniqueKey<CustomerRecord>> = listOf(CUSTOMER_HANDLE_KEY)
+
+    private lateinit var _customerIdentity: CustomerIdentityPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.customer_identity</code> table
+     */
+    fun customerIdentity(): CustomerIdentityPath {
+        if (!this::_customerIdentity.isInitialized)
+            _customerIdentity = CustomerIdentityPath(this, null, CUSTOMER_IDENTITY__CUSTOMER_IDENTITY_CUSTOMER_ID_FKEY.inverseKey)
+
+        return _customerIdentity;
+    }
+
+    val customerIdentity: CustomerIdentityPath
+        get(): CustomerIdentityPath = customerIdentity()
 
     private lateinit var _customerWallet: CustomerWalletPath
 

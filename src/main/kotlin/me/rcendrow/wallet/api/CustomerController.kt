@@ -1,35 +1,33 @@
 package me.rcendrow.wallet.api
 
 import jakarta.validation.Valid
-import me.rcendrow.wallet.api.dto.WalletResponse
 import me.rcendrow.wallet.api.dto.CreateCustomerRequest
 import me.rcendrow.wallet.api.dto.CustomerResponse
-import me.rcendrow.wallet.application.WalletService
 import me.rcendrow.wallet.application.CustomerService
+import me.rcendrow.wallet.domain.CustomerPrincipal
+import me.rcendrow.wallet.domain.UserPrincipal
 import org.springframework.http.HttpStatus
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
-import java.util.*
 
 @RestController
 @RequestMapping("/customers")
-class CustomerController(
-    private val customerService: CustomerService,
-    private val walletService: WalletService,
-) {
+class CustomerController(private val customerService: CustomerService) {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    fun createCustomer(@Valid @RequestBody request: CreateCustomerRequest): CustomerResponse {
-        return customerService.createCustomer(request.email).let { CustomerResponse.from(it) }
+    fun createCustomer(
+        @Valid @RequestBody request: CreateCustomerRequest,
+        @AuthenticationPrincipal principal: UserPrincipal,
+    ): CustomerResponse {
+        val customer =
+            customerService.createCustomer(request.handle!!, principal.email, principal.issuer, principal.externalId)
+        return CustomerResponse.from(customer)
     }
 
-    @GetMapping("/{id}")
-    fun getCustomer(@PathVariable id: UUID): CustomerResponse {
-        return customerService.getCustomer(id).let { CustomerResponse.from(it) }
-    }
-
-    @GetMapping("/{id}/wallets")
-    fun getCustomerWallets(@PathVariable id: UUID): List<WalletResponse> {
-        return walletService.findWalletsByCustomer(id).map { WalletResponse.from(it) }
+    @GetMapping
+    fun getCustomer(@AuthenticationPrincipal principal: CustomerPrincipal): CustomerResponse {
+        val customer = customerService.getCustomer(principal.customerId)
+        return CustomerResponse.from(customer)
     }
 }

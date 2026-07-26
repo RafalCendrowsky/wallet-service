@@ -12,8 +12,8 @@ import org.springframework.stereotype.Component
 )
 class WalletBalanceScheduler(val walletBalanceService: WalletBalanceService) {
 
-    @Scheduled(fixedDelay = 10)
+    @Scheduled(fixedDelay = 500)
     fun refreshBalance() {
-        walletBalanceService.refreshBalance(1000)
+        walletBalanceService.refreshBalance(500)
     }
 }

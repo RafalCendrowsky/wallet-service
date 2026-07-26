@@ -20,11 +20,28 @@ class CustomerWalletRepository(private val db: DSLContext) {
             .fetchInto(CustomerWallet::class.java)
     }
 
-    fun findById(id: UUID): CustomerWallet? {
+    fun findByCustomerIdAndWalletId(customerId: UUID, walletId: UUID): CustomerWallet? {
         return db.select(*(WALLET.fields() + CUSTOMER_WALLET.CUSTOMER_ID))
             .from(WALLET)
             .innerJoin(CUSTOMER_WALLET).on(CUSTOMER_WALLET.WALLET_ID.eq(WALLET.ID))
-            .where(WALLET.ID.eq(id))
+            .where(CUSTOMER_WALLET.WALLET_ID.eq(walletId))
+            .and(CUSTOMER_WALLET.CUSTOMER_ID.eq(customerId))
+            .fetchOneInto(CustomerWallet::class.java)
+    }
+
+    fun findById(walletId: UUID): CustomerWallet? {
+        return db.select(*(WALLET.fields() + CUSTOMER_WALLET.CUSTOMER_ID))
+            .from(WALLET)
+            .innerJoin(CUSTOMER_WALLET).on(CUSTOMER_WALLET.WALLET_ID.eq(WALLET.ID))
+            .where(CUSTOMER_WALLET.WALLET_ID.eq(walletId))
+            .fetchOneInto(CustomerWallet::class.java)
+    }
+
+    fun findByCustomerId(customerId: UUID): CustomerWallet? {
+        return db.select(*(WALLET.fields() + CUSTOMER_WALLET.CUSTOMER_ID))
+            .from(WALLET)
+            .innerJoin(CUSTOMER_WALLET).on(CUSTOMER_WALLET.WALLET_ID.eq(WALLET.ID))
+            .where(CUSTOMER_WALLET.CUSTOMER_ID.eq(customerId))
             .fetchOneInto(CustomerWallet::class.java)
     }
 

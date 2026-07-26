@@ -8,6 +8,9 @@ import java.util.*
 
 data class CreateDepositRequest(
     @field:NotNull
+    val customerId: UUID?,
+
+    @field:NotNull
     val walletId: UUID?,
 
     @field:NotNull

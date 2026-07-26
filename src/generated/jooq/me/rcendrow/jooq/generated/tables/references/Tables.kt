@@ -5,6 +5,7 @@ package me.rcendrow.jooq.generated.tables.references
 
 
 import me.rcendrow.jooq.generated.tables.Customer
+import me.rcendrow.jooq.generated.tables.CustomerIdentity
 import me.rcendrow.jooq.generated.tables.CustomerWallet
 import me.rcendrow.jooq.generated.tables.FlywaySchemaHistory
 import me.rcendrow.jooq.generated.tables.Hold
@@ -21,6 +22,11 @@ import me.rcendrow.jooq.generated.tables.WalletBalanceQueue
  * The table <code>public.customer</code>.
  */
 val CUSTOMER: Customer = Customer.CUSTOMER
+
+/**
+ * The table <code>public.customer_identity</code>.
+ */
+val CUSTOMER_IDENTITY: CustomerIdentity = CustomerIdentity.CUSTOMER_IDENTITY
 
 /**
  * The table <code>public.customer_wallet</code>.

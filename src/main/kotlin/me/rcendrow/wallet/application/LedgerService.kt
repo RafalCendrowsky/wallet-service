@@ -11,18 +11,20 @@ import org.springframework.transaction.annotation.Transactional
 class LedgerService(private val ledgerEntryRepository: LedgerEntryRepository) {
 
     @Transactional
-    fun createDebitEntry(transfer: Transfer): LedgerEntry = createEntry(transfer, true)
-
-    @Transactional
-    fun createCreditEntry(transfer: Transfer): LedgerEntry = createEntry(transfer, false)
+    fun createEntries(transfer: Transfer): List<LedgerEntry> {
+        val debitEntry = createEntry(transfer, true)
+        val creditEntry = createEntry(transfer, false)
+        return listOf(debitEntry, creditEntry)
+    }
 
     private fun createEntry(transfer: Transfer, debit: Boolean): LedgerEntry {
-        return LedgerEntry(
+        val entry = LedgerEntry(
             id = Generators.timeBasedEpochRandomGenerator().generate(),
             transferId = transfer.id,
             walletId = if (debit) transfer.fromWallet else transfer.toWallet,
             amount = if (debit) -transfer.amount else transfer.amount,
             createdAt = transfer.createdAt
-        ).let { ledgerEntryRepository.create(it) }
+        )
+        return ledgerEntryRepository.create(entry)
     }
 }

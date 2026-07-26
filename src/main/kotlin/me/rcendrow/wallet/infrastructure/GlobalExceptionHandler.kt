@@ -1,17 +1,20 @@
 package me.rcendrow.wallet.infrastructure
 
-import me.rcendrow.wallet.application.exception.WalletStatusException
-import me.rcendrow.wallet.application.exception.HoldStatusException
-import me.rcendrow.wallet.application.exception.InsufficientFundsException
-import me.rcendrow.wallet.application.exception.NotFoundException
+import me.rcendrow.wallet.application.exception.*
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
+import org.springframework.security.access.AccessDeniedException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
+
+    @ExceptionHandler(Exception::class)
+    fun handleException(ex: Exception): ProblemDetail {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, ex.message!!)
+    }
 
     @ExceptionHandler(NotFoundException::class)
     fun handleNotFound(ex: RuntimeException): ProblemDetail {
@@ -36,5 +39,15 @@ class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun handleValidation(ex: MethodArgumentNotValidException): ProblemDetail {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.message)
+    }
+
+    @ExceptionHandler(UnauthorizedAccessException::class)
+    fun handleForbidden(ex: UnauthorizedAccessException): ProblemDetail {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.message!!)
+    }
+
+    @ExceptionHandler(AccessDeniedException::class)
+    fun handleAccessDenied(ex: AccessDeniedException): ProblemDetail {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.message!!)
     }
 }

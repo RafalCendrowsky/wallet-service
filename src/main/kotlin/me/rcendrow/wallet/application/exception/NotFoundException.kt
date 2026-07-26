@@ -2,4 +2,4 @@ package me.rcendrow.wallet.application.exception
 
 import java.util.*
 
-class NotFoundException(entity: String, id: UUID) : RuntimeException("$entity not found: $id")
+class NotFoundException(entity: String, id: Any) : RuntimeException("$entity not found: $id")

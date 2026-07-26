@@ -15,6 +15,7 @@ class WalletBalanceService(
     private val holdRepository: HoldRepository
 ) {
 
+    @Transactional
     fun markWalletForRefresh(walletId: UUID) {
         walletBalanceQueueRepository.insert(walletId)
     }

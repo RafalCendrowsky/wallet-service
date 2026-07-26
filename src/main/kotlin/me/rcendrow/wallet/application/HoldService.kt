@@ -1,9 +1,9 @@
 package me.rcendrow.wallet.application
 
 import com.fasterxml.uuid.Generators
-import me.rcendrow.wallet.application.exception.WalletStatusException
 import me.rcendrow.wallet.application.exception.HoldStatusException
 import me.rcendrow.wallet.application.exception.NotFoundException
+import me.rcendrow.wallet.application.exception.WalletStatusException
 import me.rcendrow.wallet.domain.Hold
 import me.rcendrow.wallet.domain.HoldStatus
 import me.rcendrow.wallet.domain.Transfer
@@ -24,39 +24,39 @@ class HoldService(
 ) {
 
     @Transactional
-    fun placeHold(walletId: UUID, amount: BigDecimal, expiresAt: LocalDateTime): Hold {
-        val wallet = walletService.getCustomerWallet(walletId)
+    fun placeHold(customerId: UUID, walletId: UUID, amount: BigDecimal, expiresAt: LocalDateTime): Hold {
+        val wallet = walletService.getCustomerWallet(customerId, walletId)
         if (wallet.status != WalletStatus.ACTIVE) {
             throw WalletStatusException(walletId, wallet.status)
         }
         walletService.lockAndVerifyBalance(wallet, amount)
 
-        return Hold(
+        val hold = Hold(
             id = Generators.timeBasedEpochRandomGenerator().generate(),
             walletId = walletId,
             amount = amount,
             status = HoldStatus.ACTIVE,
             expiresAt = expiresAt,
             createdAt = LocalDateTime.now(),
-        ).let { holdRepository.create(it) }
+        )
+        return holdRepository.create(hold)
     }
 
     @Transactional
-    fun captureHold(holdId: UUID, toWallet: UUID): Transfer {
+    fun captureHold(customerId: UUID, holdId: UUID, toCustomerHandle: String): Transfer {
         val hold = findById(holdId)
-
         when (hold.status) {
-            HoldStatus.CAPTURED, HoldStatus.RELEASED -> throw HoldStatusException(holdId, hold.status)
+            HoldStatus.CAPTURED, HoldStatus.RELEASED -> throw HoldStatusException(hold)
             HoldStatus.ACTIVE -> if (hold.expiresAt < LocalDateTime.now()) {
-                holdRepository.updateStatus(hold, HoldStatus.RELEASED)
-                    .apply { throw HoldStatusException(id, status) }
+                val released = holdRepository.updateStatus(hold, HoldStatus.RELEASED)
+                throw HoldStatusException(released)
             }
         }
 
-
         val transfer = transferService.createTransfer(
+            fromCustomerId = customerId,
             fromWallet = hold.walletId,
-            toWallet = toWallet,
+            toCustomerHandle = toCustomerHandle,
             amount = hold.amount,
             idempotencyKey = "hold-$holdId",
         )
@@ -70,13 +70,13 @@ class HoldService(
         val hold = findById(holdId)
 
         if (hold.status != HoldStatus.ACTIVE) {
-            throw IllegalArgumentException("Hold $holdId is ${hold.status}, expected ACTIVE")
+            throw HoldStatusException(hold)
         }
 
         holdRepository.updateStatus(hold, HoldStatus.RELEASED)
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     fun getHold(holdId: UUID): Hold = findById(holdId)
 
     @Transactional

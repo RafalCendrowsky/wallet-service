@@ -1,4 +1,3 @@
-delete from account_balance;
 alter table account_balance add column last_entry_id uuid references ledger(id);
 
 update ledger set amount = -amount where type = 'CREDIT';

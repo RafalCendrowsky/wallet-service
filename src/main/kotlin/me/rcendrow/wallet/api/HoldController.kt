@@ -6,40 +6,64 @@ import me.rcendrow.wallet.api.dto.CreateHoldRequest
 import me.rcendrow.wallet.api.dto.HoldResponse
 import me.rcendrow.wallet.api.dto.TransferResponse
 import me.rcendrow.wallet.application.HoldService
+import me.rcendrow.wallet.application.WalletService
+import me.rcendrow.wallet.domain.CustomerPrincipal
 import org.springframework.http.HttpStatus
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
 import java.util.*
 
 @RestController
 @RequestMapping("/holds")
-class HoldController(private val holdService: HoldService) {
+class HoldController(
+    private val holdService: HoldService,
+    private val walletService: WalletService,
+) {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    fun placeHold(@Valid @RequestBody request: CreateHoldRequest): HoldResponse {
-        return holdService.placeHold(
-            walletId = request.walletId!!,
+    fun placeHold(
+        @Valid @RequestBody request: CreateHoldRequest,
+        @AuthenticationPrincipal principal: CustomerPrincipal,
+    ): HoldResponse {
+        walletService.getCustomerWallet(principal.customerId, request.walletId!!)
+        val hold = holdService.placeHold(
+            customerId = principal.customerId,
+            walletId = request.walletId,
             amount = request.amount!!,
             expiresAt = request.expiresAt!!,
-        ).let { HoldResponse.from(it) }
+        )
+        return HoldResponse.from(hold)
     }
 
     @GetMapping("/{id}")
-    fun getHold(@PathVariable id: UUID): HoldResponse {
-        return holdService.getHold(id).let { HoldResponse.from(it) }
+    fun getHold(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal principal: CustomerPrincipal,
+    ): HoldResponse {
+        val hold = holdService.getHold(id)
+        walletService.getCustomerWallet(principal.customerId, hold.walletId)
+        return HoldResponse.from(hold)
     }
 
     @PostMapping("/{id}/capture")
     fun captureHold(
         @PathVariable id: UUID,
         @Valid @RequestBody request: CaptureHoldRequest,
+        @AuthenticationPrincipal principal: CustomerPrincipal,
     ): TransferResponse {
-        return holdService.captureHold(id, request.toWallet!!).let { TransferResponse.from(it) }
+        val transfer = holdService.captureHold(principal.customerId, id, request.toCustomerHandle!!)
+        return TransferResponse.from(transfer)
     }
 
     @PostMapping("/{id}/release")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun releaseHold(@PathVariable id: UUID) {
+    fun releaseHold(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal principal: CustomerPrincipal,
+    ) {
+        val hold = holdService.getHold(id)
+        walletService.getCustomerWallet(principal.customerId, hold.walletId)
         holdService.releaseHold(id)
     }
 }

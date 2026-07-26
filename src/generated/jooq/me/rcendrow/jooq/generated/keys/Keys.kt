@@ -5,6 +5,7 @@ package me.rcendrow.jooq.generated.keys
 
 
 import me.rcendrow.jooq.generated.tables.Customer
+import me.rcendrow.jooq.generated.tables.CustomerIdentity
 import me.rcendrow.jooq.generated.tables.CustomerWallet
 import me.rcendrow.jooq.generated.tables.FlywaySchemaHistory
 import me.rcendrow.jooq.generated.tables.Hold
@@ -14,6 +15,7 @@ import me.rcendrow.jooq.generated.tables.Transfer
 import me.rcendrow.jooq.generated.tables.Wallet
 import me.rcendrow.jooq.generated.tables.WalletBalance
 import me.rcendrow.jooq.generated.tables.WalletBalanceQueue
+import me.rcendrow.jooq.generated.tables.records.CustomerIdentityRecord
 import me.rcendrow.jooq.generated.tables.records.CustomerRecord
 import me.rcendrow.jooq.generated.tables.records.CustomerWalletRecord
 import me.rcendrow.jooq.generated.tables.records.FlywaySchemaHistoryRecord
@@ -36,9 +38,11 @@ import org.jooq.impl.Internal
 // UNIQUE and PRIMARY KEY definitions
 // -------------------------------------------------------------------------
 
-val CUSTOMER_EMAIL_KEY: UniqueKey<CustomerRecord> = Internal.createUniqueKey(Customer.CUSTOMER, DSL.name("customer_email_key"), arrayOf(Customer.CUSTOMER.EMAIL), true)
+val CUSTOMER_HANDLE_KEY: UniqueKey<CustomerRecord> = Internal.createUniqueKey(Customer.CUSTOMER, DSL.name("customer_handle_key"), arrayOf(Customer.CUSTOMER.HANDLE), true)
 val CUSTOMER_PKEY: UniqueKey<CustomerRecord> = Internal.createUniqueKey(Customer.CUSTOMER, DSL.name("customer_pkey"), arrayOf(Customer.CUSTOMER.ID), true)
+val CUSTOMER_IDENTITY_PKEY: UniqueKey<CustomerIdentityRecord> = Internal.createUniqueKey(CustomerIdentity.CUSTOMER_IDENTITY, DSL.name("customer_identity_pkey"), arrayOf(CustomerIdentity.CUSTOMER_IDENTITY.CUSTOMER_ID, CustomerIdentity.CUSTOMER_IDENTITY.ISSUER, CustomerIdentity.CUSTOMER_IDENTITY.EXTERNAL_ID), true)
 val CUSTOMER_WALLET_PKEY: UniqueKey<CustomerWalletRecord> = Internal.createUniqueKey(CustomerWallet.CUSTOMER_WALLET, DSL.name("customer_wallet_pkey"), arrayOf(CustomerWallet.CUSTOMER_WALLET.WALLET_ID), true)
+val UQ_CUSTOMER_WALLET_CUSTOMER_ID: UniqueKey<CustomerWalletRecord> = Internal.createUniqueKey(CustomerWallet.CUSTOMER_WALLET, DSL.name("uq_customer_wallet_customer_id"), arrayOf(CustomerWallet.CUSTOMER_WALLET.CUSTOMER_ID), true)
 val FLYWAY_SCHEMA_HISTORY_PK: UniqueKey<FlywaySchemaHistoryRecord> = Internal.createUniqueKey(FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY, DSL.name("flyway_schema_history_pk"), arrayOf(FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY.INSTALLED_RANK), true)
 val HOLD_PKEY: UniqueKey<HoldRecord> = Internal.createUniqueKey(Hold.HOLD, DSL.name("hold_pkey"), arrayOf(Hold.HOLD.ID), true)
 val LEDGER_PKEY: UniqueKey<LedgerEntryRecord> = Internal.createUniqueKey(LedgerEntry.LEDGER_ENTRY, DSL.name("ledger_pkey"), arrayOf(LedgerEntry.LEDGER_ENTRY.ID), true)
@@ -53,6 +57,7 @@ val WALLET_BALANCE_QUEUE_PKEY: UniqueKey<WalletBalanceQueueRecord> = Internal.cr
 // FOREIGN KEY definitions
 // -------------------------------------------------------------------------
 
+val CUSTOMER_IDENTITY__CUSTOMER_IDENTITY_CUSTOMER_ID_FKEY: ForeignKey<CustomerIdentityRecord, CustomerRecord> = Internal.createForeignKey(CustomerIdentity.CUSTOMER_IDENTITY, DSL.name("customer_identity_customer_id_fkey"), arrayOf(CustomerIdentity.CUSTOMER_IDENTITY.CUSTOMER_ID), me.rcendrow.jooq.generated.keys.CUSTOMER_PKEY, arrayOf(Customer.CUSTOMER.ID), true)
 val CUSTOMER_WALLET__CUSTOMER_WALLET_CUSTOMER_ID_FKEY: ForeignKey<CustomerWalletRecord, CustomerRecord> = Internal.createForeignKey(CustomerWallet.CUSTOMER_WALLET, DSL.name("customer_wallet_customer_id_fkey"), arrayOf(CustomerWallet.CUSTOMER_WALLET.CUSTOMER_ID), me.rcendrow.jooq.generated.keys.CUSTOMER_PKEY, arrayOf(Customer.CUSTOMER.ID), true)
 val CUSTOMER_WALLET__CUSTOMER_WALLET_WALLET_ID_FKEY: ForeignKey<CustomerWalletRecord, WalletRecord> = Internal.createForeignKey(CustomerWallet.CUSTOMER_WALLET, DSL.name("customer_wallet_wallet_id_fkey"), arrayOf(CustomerWallet.CUSTOMER_WALLET.WALLET_ID), me.rcendrow.jooq.generated.keys.WALLET_PKEY, arrayOf(Wallet.WALLET.ID), true)
 val HOLD__HOLD_WALLET_ID_FKEY: ForeignKey<HoldRecord, WalletRecord> = Internal.createForeignKey(Hold.HOLD, DSL.name("hold_wallet_id_fkey"), arrayOf(Hold.HOLD.WALLET_ID), me.rcendrow.jooq.generated.keys.WALLET_PKEY, arrayOf(Wallet.WALLET.ID), true)

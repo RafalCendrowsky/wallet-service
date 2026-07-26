@@ -6,13 +6,13 @@ import java.util.*
 
 data class CustomerResponse(
     val id: UUID,
-    val email: String,
+    val handle: String,
     val createdAt: LocalDateTime,
 ) {
     companion object {
         fun from(customer: Customer) = CustomerResponse(
             id = customer.id,
-            email = customer.email,
+            handle = customer.handle,
             createdAt = customer.createdAt,
         )
     }

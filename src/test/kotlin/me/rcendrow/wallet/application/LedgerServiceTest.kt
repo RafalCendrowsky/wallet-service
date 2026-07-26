@@ -35,12 +35,17 @@ class LedgerServiceTest {
         )
         every { ledgerEntryRepository.create(any()) } answers { firstArg() }
 
-        val result = service.createDebitEntry(transfer)
+        val results = service.createEntries(transfer)
 
-        assertThat(result.walletId).isEqualTo(transfer.fromWallet)
-        assertThat(result.transferId).isEqualTo(transfer.id)
-        assertThat(result.amount).isEqualByComparingTo(transfer.amount.negate())
-        verify { ledgerEntryRepository.create(result) }
+        assertThat(results.size).isEqualTo(2)
+        assertThat(results.sumOf { it.amount }).isEqualByComparingTo(BigDecimal.ZERO)
+
+        val debit = results.filter { it.amount < BigDecimal.ZERO }[0]
+
+        assertThat(debit.walletId).isEqualTo(transfer.fromWallet)
+        assertThat(debit.transferId).isEqualTo(transfer.id)
+        assertThat(debit.amount).isEqualByComparingTo(transfer.amount.negate())
+        verify { ledgerEntryRepository.create(debit) }
     }
 
     @Test
@@ -55,11 +60,16 @@ class LedgerServiceTest {
         )
         every { ledgerEntryRepository.create(any()) } answers { firstArg() }
 
-        val result = service.createCreditEntry(transfer)
+        val results = service.createEntries(transfer)
 
-        assertThat(result.walletId).isEqualTo(transfer.toWallet)
-        assertThat(result.transferId).isEqualTo(transfer.id)
-        assertThat(result.amount).isEqualByComparingTo(transfer.amount)
-        verify { ledgerEntryRepository.create(result) }
+        assertThat(results.size).isEqualTo(2)
+        assertThat(results.sumOf { it.amount }).isEqualByComparingTo(BigDecimal.ZERO)
+
+        val credit = results.filter { it.amount > BigDecimal.ZERO }[0]
+
+        assertThat(credit.walletId).isEqualTo(transfer.toWallet)
+        assertThat(credit.transferId).isEqualTo(transfer.id)
+        assertThat(credit.amount).isEqualByComparingTo(transfer.amount)
+        verify { ledgerEntryRepository.create(credit) }
     }
 }
