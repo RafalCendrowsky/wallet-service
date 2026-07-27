@@ -27,13 +27,6 @@ class HoldRepository(private val db: DSLContext) {
             .fetchOneInto(BigDecimal::class.java)!!
     }
 
-    fun findExpiredActiveHolds(): List<Hold> {
-        return db.selectFrom(HOLD)
-            .where(HOLD.STATUS.eq(HoldStatus.ACTIVE.name))
-            .and(HOLD.EXPIRES_AT.le(LocalDateTime.now()))
-            .fetchInto(Hold::class.java)
-    }
-
     fun create(hold: Hold): Hold {
         return db.insertInto(HOLD)
             .set(HOLD.ID, hold.id)
@@ -53,5 +46,13 @@ class HoldRepository(private val db: DSLContext) {
             .and(HOLD.STATUS.eq(HoldStatus.ACTIVE.name))
             .returning()
             .fetchSingleInto(Hold::class.java)
+    }
+
+    fun releaseExpiredActiveHolds() {
+        db.update(HOLD)
+            .set(HOLD.STATUS, HoldStatus.RELEASED.name)
+            .where(HOLD.STATUS.eq(HoldStatus.ACTIVE.name))
+            .and(HOLD.EXPIRES_AT.le(LocalDateTime.now()))
+            .execute()
     }
 }

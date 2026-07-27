@@ -7,10 +7,13 @@ import me.rcendrow.jooq.generated.tables.Wallet.Companion.WALLET
 import me.rcendrow.jooq.generated.tables.WalletBalance.Companion.WALLET_BALANCE
 import me.rcendrow.jooq.generated.tables.WalletBalanceQueue.Companion.WALLET_BALANCE_QUEUE
 import me.rcendrow.jooq.generated.tables.references.CUSTOMER
+import me.rcendrow.jooq.generated.tables.references.HOLD
 import me.rcendrow.wallet.application.*
 import me.rcendrow.wallet.application.exception.InsufficientFundsException
 import me.rcendrow.wallet.application.exception.NotFoundException
 import me.rcendrow.wallet.domain.Customer
+import me.rcendrow.wallet.domain.Hold
+import me.rcendrow.wallet.domain.HoldStatus
 import me.rcendrow.wallet.domain.wallet.ServiceWalletRole
 import me.rcendrow.wallet.domain.wallet.WalletStatus
 import me.rcendrow.wallet.persistence.wallet.WalletBalanceQueueRepository
@@ -778,7 +781,7 @@ class WalletServiceBusinessLogicTests {
 
             assertThat(hold.walletId).isEqualTo(wallet.id)
             assertThat(hold.amount).isEqualByComparingTo(BigDecimal("30.00"))
-            assertThat(hold.status).isEqualTo(me.rcendrow.wallet.domain.HoldStatus.ACTIVE)
+            assertThat(hold.status).isEqualTo(HoldStatus.ACTIVE)
 
             val balance = walletService.getBalance(customer.id, wallet.id)
             assertThat(balance.balance).isEqualByComparingTo(BigDecimal("100.00"))
@@ -839,6 +842,47 @@ class WalletServiceBusinessLogicTests {
             assertThat(transfer.amount).isEqualByComparingTo(BigDecimal("50.00"))
             assertThat(transfer.fromWallet).isEqualTo(sender.id)
             assertThat(transfer.toWallet).isEqualTo(receiver.id)
+        }
+
+        @Test
+        fun `should release expired holds`() {
+            val senderCustomer = createTestCustomer("hold-capture-sender")
+            val sender = walletService.createCustomerWallet(senderCustomer.id)
+            transferService.createDeposit(
+                senderCustomer.id,
+                sender.id,
+                BigDecimal("1000.00"),
+                UUID.randomUUID().toString()
+            )
+
+            repeat(5) {
+                holdService.placeHold(
+                    senderCustomer.id,
+                    sender.id,
+                    BigDecimal("50.00"),
+
+                    LocalDateTime.now().minusDays(1)
+                )
+            }
+
+            repeat(5) {
+                holdService.placeHold(
+                    senderCustomer.id,
+                    sender.id,
+                    BigDecimal("50.00"),
+
+                    LocalDateTime.now().plusDays(1)
+                )
+            }
+
+            holdService.releaseExpiredHolds()
+
+            val holds = db.selectFrom(HOLD).where(HOLD.WALLET_ID.eq(sender.id)).fetchInto(Hold::class.java)
+
+            assertThat(holds.size).isEqualTo(10)
+            assertThat(holds.count { it.status == HoldStatus.ACTIVE }).isEqualTo(5)
+            assertThat(holds.count { it.status == HoldStatus.RELEASED }).isEqualTo(5)
+            assertThat(holds.none { it.status != HoldStatus.RELEASED && it.expiresAt.isBefore(LocalDateTime.now()) })
         }
 
         @Test

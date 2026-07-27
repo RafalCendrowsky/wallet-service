@@ -4,13 +4,13 @@ import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import me.rcendrow.wallet.application.exception.WalletStatusException
 import me.rcendrow.wallet.application.exception.InsufficientFundsException
+import me.rcendrow.wallet.application.exception.WalletStatusException
 import me.rcendrow.wallet.domain.Hold
 import me.rcendrow.wallet.domain.HoldStatus
 import me.rcendrow.wallet.domain.Transfer
-import me.rcendrow.wallet.domain.wallet.WalletStatus
 import me.rcendrow.wallet.domain.wallet.CustomerWallet
+import me.rcendrow.wallet.domain.wallet.WalletStatus
 import me.rcendrow.wallet.persistence.HoldRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -149,20 +149,8 @@ class HoldServiceTest {
 
     @Test
     fun `should release expired holds`() {
-        val holdId = UUID.randomUUID()
-        val expiredHold = Hold(
-            holdId,
-            UUID.randomUUID(),
-            BigDecimal("50.00"),
-            HoldStatus.ACTIVE,
-            LocalDateTime.now().minusMinutes(1),
-            LocalDateTime.now()
-        )
-        every { holdRepository.findExpiredActiveHolds() } returns listOf(expiredHold)
-        every { holdRepository.updateStatus(expiredHold, HoldStatus.RELEASED) } returns expiredHold
-
         service.releaseExpiredHolds()
 
-        verify { holdRepository.updateStatus(expiredHold, HoldStatus.RELEASED) }
+        verify(exactly = 1) { holdRepository.releaseExpiredActiveHolds() }
     }
 }

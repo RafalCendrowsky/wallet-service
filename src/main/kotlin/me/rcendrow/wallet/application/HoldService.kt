@@ -82,8 +82,7 @@ class HoldService(
     @Transactional
     @Scheduled(fixedRate = 60_000)
     fun releaseExpiredHolds() {
-        val expired = holdRepository.findExpiredActiveHolds()
-        expired.forEach { holdRepository.updateStatus(it, HoldStatus.RELEASED) }
+        holdRepository.releaseExpiredActiveHolds()
     }
 
     private fun findById(id: UUID): Hold {
