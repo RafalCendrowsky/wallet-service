@@ -18,11 +18,11 @@ class HoldRepository(private val db: DSLContext) {
     private val fromOwner = WALLET_OWNER_VIEW.`as`("fromOwner")
     private val toOwner = WALLET_OWNER_VIEW.`as`("toOwner")
 
-    fun findByOwnerIdAndId(customerId: UUID, id: UUID): Hold? {
+    fun findByOwnerIdAndId(ownerId: UUID, id: UUID): Hold? {
         return selectWithOwners()
             .where(HOLD.ID.eq(id))
-            .and(HOLD.OWNER_ID.eq(customerId))
-            .fetchSingle(Records.mapping(Hold::from))
+            .and(toOwner.OWNER_ID.eq(ownerId))
+            .fetchOne(Records.mapping(Hold::from))
     }
 
     fun sumActiveAmount(walletId: UUID): BigDecimal {
@@ -38,7 +38,6 @@ class HoldRepository(private val db: DSLContext) {
             .set(HOLD.ID, hold.id)
             .set(HOLD.FROM_WALLET, hold.fromWallet)
             .set(HOLD.TO_WALLET, hold.toWallet)
-            .set(HOLD.OWNER_ID, hold.toOwner?.id)
             .set(HOLD.AMOUNT, hold.amount)
             .set(HOLD.STATUS, hold.status.name)
             .set(HOLD.EXPIRES_AT, hold.expiresAt)
@@ -69,7 +68,7 @@ class HoldRepository(private val db: DSLContext) {
             HOLD.FROM_WALLET,
             fromOwner.ownerField(),
             HOLD.TO_WALLET,
-            fromOwner.ownerField(),
+            toOwner.ownerField(),
             HOLD.AMOUNT,
             HOLD.STATUS,
             HOLD.EXPIRES_AT,

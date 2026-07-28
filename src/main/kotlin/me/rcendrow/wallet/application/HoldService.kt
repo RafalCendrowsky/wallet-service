@@ -6,7 +6,7 @@ import me.rcendrow.wallet.application.exception.NotFoundException
 import me.rcendrow.wallet.application.exception.WalletStatusException
 import me.rcendrow.wallet.domain.Hold
 import me.rcendrow.wallet.domain.HoldStatus
-import me.rcendrow.wallet.domain.HoldView
+
 import me.rcendrow.wallet.domain.Transfer
 import me.rcendrow.wallet.domain.wallet.WalletStatus
 import me.rcendrow.wallet.persistence.HoldRepository
@@ -67,7 +67,7 @@ class HoldService(
             }
         }
 
-        val from = walletService.getCustomerWallet(hold.fromWallet)
+        val from = walletService.getCustomerWalletById(hold.fromWallet)
         val to = walletService.getCustomerWalletById(hold.toWallet)
         val transfer = transferService.createTransfer(
             fromWallet = from,
@@ -92,7 +92,7 @@ class HoldService(
     }
 
     @Transactional(readOnly = true)
-    fun getHold(ownerId: UUID, holdId: UUID): HoldView {
+    fun getHold(ownerId: UUID, holdId: UUID): Hold {
         return holdRepository.findByOwnerIdAndId(ownerId, holdId)
             ?: throw NotFoundException("Hold", holdId)
     }

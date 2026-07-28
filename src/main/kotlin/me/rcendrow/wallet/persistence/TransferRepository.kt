@@ -74,7 +74,7 @@ class TransferRepository(private val db: DSLContext) {
             TRANSFER.FROM_WALLET,
             fromOwner.ownerField(),
             TRANSFER.TO_WALLET,
-            fromOwner.ownerField(),
+            toOwner.ownerField(),
             TRANSFER.AMOUNT,
             TRANSFER.IDEMPOTENCY_KEY,
             TRANSFER.CREATED_AT,

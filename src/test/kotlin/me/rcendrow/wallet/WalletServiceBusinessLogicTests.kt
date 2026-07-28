@@ -1,18 +1,18 @@
 package me.rcendrow.wallet
 
 import me.rcendrow.jooq.generated.tables.LedgerEntry.Companion.LEDGER_ENTRY
-import me.rcendrow.jooq.generated.tables.ServiceWallet.Companion.SERVICE_WALLET
 import me.rcendrow.jooq.generated.tables.Transfer.Companion.TRANSFER
 import me.rcendrow.jooq.generated.tables.Wallet.Companion.WALLET
 import me.rcendrow.jooq.generated.tables.WalletBalance.Companion.WALLET_BALANCE
 import me.rcendrow.jooq.generated.tables.WalletBalanceQueue.Companion.WALLET_BALANCE_QUEUE
 import me.rcendrow.jooq.generated.tables.references.CUSTOMER
 import me.rcendrow.jooq.generated.tables.references.HOLD
+import me.rcendrow.jooq.generated.tables.references.SERVICE_ACCOUNT
+import me.rcendrow.jooq.generated.tables.references.WALLET_OWNER
 import me.rcendrow.wallet.application.*
 import me.rcendrow.wallet.application.exception.InsufficientFundsException
 import me.rcendrow.wallet.application.exception.NotFoundException
 import me.rcendrow.wallet.domain.Customer
-import me.rcendrow.wallet.domain.Hold
 import me.rcendrow.wallet.domain.HoldStatus
 import me.rcendrow.wallet.domain.wallet.ServiceRole
 import me.rcendrow.wallet.domain.wallet.WalletStatus
@@ -68,25 +68,30 @@ class WalletServiceBusinessLogicTests {
     private val testIssuer = "https://test-issuer.example.com"
 
     private fun createTestCustomer(handle: String, externalId: String = "ext-$handle"): Customer =
-        customerService.createCustomer(handle, "email-$handle@test.com", testIssuer, externalId)
+        customerService.createCustomer(handle, handle, "email-$handle@test.com", testIssuer, externalId)
 
     @BeforeEach
     fun clearDatabase() {
         txTemplate.execute {
-            db.truncate(WALLET, CUSTOMER).cascade().execute()
-            val record = db.insertInto(WALLET)
-                .set(WALLET.ID, UUID.randomUUID())
+            db.truncate(CUSTOMER, WALLET, SERVICE_ACCOUNT).cascade().execute()
+            val walletId = UUID.randomUUID()
+            db.insertInto(WALLET)
+                .set(WALLET.ID, walletId)
                 .set(WALLET.STATUS, "ACTIVE")
-                .set(WALLET.TYPE, "SERVICE")
                 .set(WALLET.CREATED_AT, LocalDateTime.now())
-                .returning()
-                .fetchSingle()
-            db.insertInto(SERVICE_WALLET)
-                .set(SERVICE_WALLET.WALLET_ID, record[WALLET.ID])
-                .set(SERVICE_WALLET.ROLE, ServiceRole.EXTERNAL_SETTLEMENT.name)
+                .execute()
+            val serviceAccountId = UUID.randomUUID()
+            db.insertInto(SERVICE_ACCOUNT)
+                .set(SERVICE_ACCOUNT.ID, serviceAccountId)
+                .set(SERVICE_ACCOUNT.ROLE, ServiceRole.EXTERNAL_SETTLEMENT.name)
+                .set(SERVICE_ACCOUNT.DISPLAY_NAME, "External Settlement")
+                .execute()
+            db.insertInto(WALLET_OWNER)
+                .set(WALLET_OWNER.WALLET_ID, walletId)
+                .set(WALLET_OWNER.SERVICE_ID, serviceAccountId)
                 .execute()
             db.insertInto(WALLET_BALANCE)
-                .set(WALLET_BALANCE.WALLET_ID, record[WALLET.ID])
+                .set(WALLET_BALANCE.WALLET_ID, walletId)
                 .set(WALLET_BALANCE.BALANCE, BigDecimal.ZERO)
                 .execute()
         }
@@ -160,7 +165,7 @@ class WalletServiceBusinessLogicTests {
             val wallet = walletService.createCustomerWallet(customer.id)
 
             assertThat(wallet.id).isNotNull
-            assertThat(wallet.customerId).isEqualTo(customer.id)
+            assertThat(wallet.owner.id).isEqualTo(customer.id)
             assertThat(wallet.status).isEqualTo(WalletStatus.ACTIVE)
         }
 
@@ -171,7 +176,7 @@ class WalletServiceBusinessLogicTests {
 
             val wallet = walletService.getCustomerWallet(customer.id, created.id)
 
-            assertThat(wallet.customerId).isEqualTo(customer.id)
+            assertThat(wallet.owner.id).isEqualTo(customer.id)
         }
 
         @Test
@@ -797,7 +802,7 @@ class WalletServiceBusinessLogicTests {
             assertThat(balance.balance).isEqualByComparingTo(BigDecimal("100.00"))
             assertThat(balance.availableBalance).isEqualByComparingTo(BigDecimal("70.00"))
 
-            holdService.releaseHold(customer.id, hold.id)
+            holdService.releaseHold(otherCustomer.id, hold.id)
 
             val releasedBalance = walletService.getBalance(customer.id, wallet.id)
             assertThat(releasedBalance.availableBalance).isEqualByComparingTo(BigDecimal("100.00"))
@@ -869,7 +874,7 @@ class WalletServiceBusinessLogicTests {
                 LocalDateTime.now().plusDays(1)
             )
 
-            val transfer = holdService.captureHold(senderCustomer.id, hold.id)
+            val transfer = holdService.captureHold(receiverCustomer.id, hold.id)
             assertThat(transfer.amount).isEqualByComparingTo(BigDecimal("50.00"))
             assertThat(transfer.fromWallet).isEqualTo(sender.id)
             assertThat(transfer.toWallet).isEqualTo(receiver.id)
@@ -913,12 +918,14 @@ class WalletServiceBusinessLogicTests {
 
             holdService.releaseExpiredHolds()
 
-            val holds = db.selectFrom(HOLD).where(HOLD.FROM_WALLET.eq(sender.id)).fetchInto(Hold::class.java)
+            val holds = db.select(HOLD.STATUS, HOLD.EXPIRES_AT).from(HOLD)
+                .where(HOLD.FROM_WALLET.eq(sender.id))
+                .fetch { r -> r.value1() to r.value2() }
 
             assertThat(holds.size).isEqualTo(10)
-            assertThat(holds.count { it.status == HoldStatus.ACTIVE }).isEqualTo(5)
-            assertThat(holds.count { it.status == HoldStatus.RELEASED }).isEqualTo(5)
-            assertThat(holds.none { it.status != HoldStatus.RELEASED && it.expiresAt.isBefore(LocalDateTime.now()) })
+            assertThat(holds.count { (s, _) -> s == HoldStatus.ACTIVE.name }).isEqualTo(5)
+            assertThat(holds.count { (s, _) -> s == HoldStatus.RELEASED.name }).isEqualTo(5)
+            assertThat(holds.none { (s, e) -> s != HoldStatus.RELEASED.name && e!!.isBefore(LocalDateTime.now()) }).isTrue
         }
 
         @Test
@@ -940,9 +947,9 @@ class WalletServiceBusinessLogicTests {
             val pool = Executors.newVirtualThreadPerTaskExecutor()
 
             val transferReceivers = (1..numThreads / 2).map {
-                val c = createTestCustomer("compete-receiver-$it")
-                walletService.createCustomerWallet(c.id)
-                c
+                createTestCustomer("compete-receiver-$it").also { customer ->
+                    walletService.createCustomerWallet(customer.id)
+                }
             }
 
             val tasks = (0 until numThreads).map { i ->

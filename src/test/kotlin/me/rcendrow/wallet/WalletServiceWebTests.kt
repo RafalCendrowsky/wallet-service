@@ -76,7 +76,7 @@ class WalletServiceWebTests {
         val result = mockMvc.perform(
             post("/customers")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(jsonMapper.writeValueAsString(CreateCustomerRequest(handle)))
+                .content(jsonMapper.writeValueAsString(CreateCustomerRequest(handle, handle)))
                 .with(pendingPrincipal(externalId))
         )
             .andExpect(status().isCreated)
@@ -101,7 +101,7 @@ class WalletServiceWebTests {
         mockMvc.perform(
             post("/customers")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(jsonMapper.writeValueAsString(CreateCustomerRequest("new-user")))
+                .content(jsonMapper.writeValueAsString(CreateCustomerRequest("new-user", "new-user")))
                 .with(pendingPrincipal("new-user"))
         )
             .andExpect(status().isCreated)

@@ -27,6 +27,7 @@ class CustomerRepository(private val db: DSLContext) {
             return db.insertInto(CUSTOMER)
                 .set(CUSTOMER.ID, customer.id)
                 .set(CUSTOMER.HANDLE, customer.handle)
+                .set(CUSTOMER.DISPLAY_NAME, customer.displayName)
                 .set(CUSTOMER.CREATED_AT, customer.createdAt)
                 .returning()
                 .fetchSingleInto(Customer::class.java)

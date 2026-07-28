@@ -4,6 +4,7 @@ import com.fasterxml.uuid.Generators
 import me.rcendrow.wallet.application.exception.InsufficientFundsException
 import me.rcendrow.wallet.application.exception.NotFoundException
 import me.rcendrow.wallet.domain.wallet.*
+import me.rcendrow.wallet.persistence.ServiceRepository
 import me.rcendrow.wallet.persistence.wallet.WalletBalanceRepository
 import me.rcendrow.wallet.persistence.wallet.WalletRepository
 import org.springframework.stereotype.Service
@@ -18,6 +19,7 @@ class WalletService(
     private val walletBalanceService: WalletBalanceService,
     private val walletRepository: WalletRepository,
     private val walletBalanceRepository: WalletBalanceRepository,
+    private val serviceRepository: ServiceRepository,
 ) {
     @Transactional(readOnly = true)
     fun findWalletsByCustomer(customerId: UUID): List<Wallet> {
@@ -92,5 +94,8 @@ class WalletService(
     }
 
     @Transactional(readOnly = true)
-    fun getServiceWalletByRole(role: ServiceRole): Wallet = walletRepository.findByServiceId(role)
+    fun getServiceWalletByRole(role: ServiceRole): Wallet {
+        val service = serviceRepository.findByServiceRole(role) ?: throw NotFoundException("Service", role.name)
+        return walletRepository.findByServiceId(service.id)
+    }
 }

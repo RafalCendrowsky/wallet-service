@@ -38,10 +38,11 @@ class CustomerServiceTest {
         every { customerRepository.create(any()) } answers { firstArg() }
         every { customerIdentityRepository.create(any()) } returns mockk()
 
-        val result = customerService.createCustomer(handle, email, issuer, externalId)
+        val result = customerService.createCustomer(handle, handle, email, issuer, externalId)
 
         assertThat(result.id).isNotNull
         assertThat(result.handle).isEqualTo(handle)
+        assertThat(result.displayName).isEqualTo(handle)
         assertThat(result.createdAt).isNotNull
         verify { customerRepository.create(result) }
         verify { customerIdentityRepository.create(any()) }
@@ -54,7 +55,7 @@ class CustomerServiceTest {
         val issuer = "https://issuer.example.com"
         val externalId = "ext-123"
         val customerId = UUID.randomUUID()
-        val customer = Customer(id = customerId, handle = handle, createdAt = LocalDateTime.now())
+        val customer = Customer(id = customerId, handle = handle, displayName = handle, createdAt = LocalDateTime.now())
         every { customerIdentityRepository.findByIssuerAndExternalId(issuer, externalId) } returns CustomerIdentity(
             customerId = customerId,
             issuer = issuer,
@@ -64,7 +65,7 @@ class CustomerServiceTest {
         )
         every { customerRepository.findById(customerId) } returns customer
 
-        val result = customerService.createCustomer(handle, email, issuer, externalId)
+        val result = customerService.createCustomer(handle, handle, email, issuer, externalId)
 
         assertThat(result).isEqualTo(customer)
     }
@@ -76,13 +77,17 @@ class CustomerServiceTest {
         val issuer = "https://issuer.example.com"
         val externalId = "ext-123"
         val customerId = UUID.randomUUID()
-        val customer = Customer(id = customerId, handle = handle, createdAt = LocalDateTime.now())
+        val customer = Customer(id = customerId, handle = handle, displayName = handle, createdAt = LocalDateTime.now())
         every { customerIdentityRepository.findByIssuerAndExternalId(issuer, externalId) } returns CustomerIdentity(
-            customerId = customerId, issuer = issuer, externalId = externalId, email = email, createdAt = LocalDateTime.now()
+            customerId = customerId,
+            issuer = issuer,
+            externalId = externalId,
+            email = email,
+            createdAt = LocalDateTime.now()
         )
         every { customerRepository.findById(customerId) } returns customer
 
-        val result = customerService.createCustomer(handle, email, issuer, externalId)
+        val result = customerService.createCustomer(handle, handle, email, issuer, externalId)
 
         assertThat(result).isEqualTo(customer)
     }
@@ -95,13 +100,25 @@ class CustomerServiceTest {
         val issuer = "https://issuer.example.com"
         val externalId = "ext-123"
         val customerId = UUID.randomUUID()
-        val customer = Customer(id = customerId, handle = handle, createdAt = LocalDateTime.now())
+        val customer = Customer(id = customerId, handle = handle, displayName = handle, createdAt = LocalDateTime.now())
         every { customerIdentityRepository.findByIssuerAndExternalId(issuer, externalId) } returns CustomerIdentity(
-            customerId = customerId, issuer = issuer, externalId = externalId, email = email, createdAt = LocalDateTime.now()
+            customerId = customerId,
+            issuer = issuer,
+            externalId = externalId,
+            email = email,
+            createdAt = LocalDateTime.now()
         )
         every { customerRepository.findById(customerId) } returns customer
 
-        assertThatThrownBy { customerService.createCustomer(differentHandle, email, issuer, externalId) }
+        assertThatThrownBy {
+            customerService.createCustomer(
+                differentHandle,
+                differentHandle,
+                email,
+                issuer,
+                externalId
+            )
+        }
             .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("already registered with handle")
     }
@@ -113,9 +130,9 @@ class CustomerServiceTest {
         val issuer = "https://issuer.example.com"
         val externalId = "ext-123"
         every { customerIdentityRepository.findByIssuerAndExternalId(issuer, externalId) } returns null
-        every { customerRepository.findByHandle(handle) } returns mockk()
+        every { customerRepository.create(any()) } throws IllegalArgumentException("handle already taken")
 
-        assertThatThrownBy { customerService.createCustomer(handle, email, issuer, externalId) }
+        assertThatThrownBy { customerService.createCustomer(handle, handle, email, issuer, externalId) }
             .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("handle already taken")
     }
@@ -123,7 +140,7 @@ class CustomerServiceTest {
     @Test
     fun `should return customer by id`() {
         val id = UUID.randomUUID()
-        val customer = Customer(id = id, handle = "bob", createdAt = LocalDateTime.now())
+        val customer = Customer(id = id, handle = "bob", displayName = "bob", createdAt = LocalDateTime.now())
         every { customerRepository.findById(id) } returns customer
 
         val result = customerService.getCustomer(id)
@@ -143,7 +160,8 @@ class CustomerServiceTest {
     @Test
     fun `should return customer by handle`() {
         val handle = "charlie"
-        val customer = Customer(id = UUID.randomUUID(), handle = handle, createdAt = LocalDateTime.now())
+        val customer =
+            Customer(id = UUID.randomUUID(), handle = handle, displayName = handle, createdAt = LocalDateTime.now())
         every { customerRepository.findByHandle(handle) } returns customer
 
         val result = customerService.getCustomerByHandle(handle)

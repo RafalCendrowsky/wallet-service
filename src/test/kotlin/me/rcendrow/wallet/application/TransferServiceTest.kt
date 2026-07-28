@@ -8,10 +8,10 @@ import me.rcendrow.wallet.application.exception.DuplicateIdempotencyKeyException
 import me.rcendrow.wallet.application.exception.InsufficientFundsException
 import me.rcendrow.wallet.domain.Customer
 import me.rcendrow.wallet.domain.Transfer
-import me.rcendrow.wallet.domain.TransferView
-import me.rcendrow.wallet.domain.wallet.CustomerWallet
 import me.rcendrow.wallet.domain.wallet.ServiceRole
-import me.rcendrow.wallet.domain.wallet.ServiceWallet
+import me.rcendrow.wallet.domain.wallet.Wallet
+import me.rcendrow.wallet.domain.wallet.WalletOwner
+import me.rcendrow.wallet.domain.wallet.WalletOwnerType
 import me.rcendrow.wallet.domain.wallet.WalletStatus
 import me.rcendrow.wallet.persistence.TransferRepository
 import org.assertj.core.api.Assertions.assertThat
@@ -45,13 +45,21 @@ class TransferServiceTest {
         clearMocks(transferRepository, walletService, ledgerService, walletBalanceService, customerService)
     }
 
-    private fun activeWallet(id: UUID, customerId: UUID = UUID.randomUUID()) = CustomerWallet(
-        id = id, customerId = customerId, status = WalletStatus.ACTIVE, createdAt = LocalDateTime.now()
+    private fun activeWallet(id: UUID, ownerId: UUID = UUID.randomUUID()) = Wallet(
+        id = id,
+        owner = WalletOwner(
+            id = ownerId,
+            displayName = "display",
+            label = "handle",
+            type = WalletOwnerType.CUSTOMER,
+        ),
+        status = WalletStatus.ACTIVE,
+        createdAt = LocalDateTime.now()
     )
 
     private val toCustomerId = UUID.randomUUID()
     private val toHandle = "recipient"
-    private val toCustomer = Customer(toCustomerId, toHandle, LocalDateTime.now())
+    private val toCustomer = Customer(toCustomerId, toHandle, toHandle, LocalDateTime.now())
 
     @Test
     fun `should reject zero amount`() {
@@ -182,7 +190,7 @@ class TransferServiceTest {
         val walletId = UUID.randomUUID()
         val wallet = activeWallet(walletId, customerId)
         every { walletService.getCustomerWallet(customerId, walletId) } returns wallet
-        every { customerService.getCustomer(customerId) } returns Customer(customerId, "self", LocalDateTime.now())
+        every { customerService.getCustomer(customerId) } returns Customer(customerId, "self", "self", LocalDateTime.now())
         every { walletService.getCustomerWallet(customerId) } returns wallet
 
         assertThatThrownBy {
@@ -199,11 +207,16 @@ class TransferServiceTest {
 
     @Test
     fun `should skip balance check for system wallet deposits`() {
-        val systemWallet = ServiceWallet(
+        val systemWallet = Wallet(
             id = UUID.fromString("00000000-0000-0000-0000-000000000001"),
+            owner = WalletOwner(
+                id = UUID.randomUUID(),
+                displayName = "settlement",
+                label = ServiceRole.EXTERNAL_SETTLEMENT.name,
+                type = WalletOwnerType.SERVICE,
+            ),
             status = WalletStatus.ACTIVE,
             createdAt = LocalDateTime.now(),
-            role = ServiceRole.EXTERNAL_SETTLEMENT
         )
         val customerId = UUID.randomUUID()
         val toId = UUID.randomUUID()
@@ -223,12 +236,12 @@ class TransferServiceTest {
     @Test
     fun `should get transfer by id`() {
         val id = UUID.randomUUID()
-        val view = mockk<TransferView>()
-        every { transferRepository.findById(id) } returns view
+        val transfer = mockk<Transfer>()
+        every { transferRepository.findById(id) } returns transfer
 
         val result = service.getTransfer(id)
 
-        assertThat(result).isSameAs(view)
+        assertThat(result).isSameAs(transfer)
     }
 
     @Test
@@ -246,7 +259,7 @@ class TransferServiceTest {
         val customerId = UUID.randomUUID()
         val walletId = UUID.randomUUID()
         val pageable = PageRequest.of(0, 10)
-        val page: Page<TransferView> = PageImpl(emptyList())
+        val page: Page<Transfer> = PageImpl(emptyList())
         every { walletService.getCustomerWallet(customerId, walletId) } returns mockk()
         every { transferRepository.findByWalletId(walletId, pageable) } returns page
 

@@ -28,7 +28,9 @@ class LedgerServiceTest {
         val transfer = Transfer(
             id = UUID.randomUUID(),
             fromWallet = UUID.randomUUID(),
+            fromOwner = null,
             toWallet = UUID.randomUUID(),
+            toOwner = null,
             amount = BigDecimal("50.00"),
             idempotencyKey = UUID.randomUUID().toString(),
             createdAt = LocalDateTime.now(),
@@ -53,7 +55,9 @@ class LedgerServiceTest {
         val transfer = Transfer(
             id = UUID.randomUUID(),
             fromWallet = UUID.randomUUID(),
+            fromOwner = null,
             toWallet = UUID.randomUUID(),
+            toOwner = null,
             amount = BigDecimal("75.00"),
             idempotencyKey = UUID.randomUUID().toString(),
             createdAt = LocalDateTime.now(),
