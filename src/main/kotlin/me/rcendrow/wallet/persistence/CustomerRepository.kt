@@ -3,6 +3,7 @@ package me.rcendrow.wallet.persistence
 import me.rcendrow.jooq.generated.tables.Customer.Companion.CUSTOMER
 import me.rcendrow.wallet.domain.Customer
 import org.jooq.DSLContext
+import org.springframework.dao.DuplicateKeyException
 import org.springframework.stereotype.Repository
 import java.util.*
 
@@ -22,11 +23,15 @@ class CustomerRepository(private val db: DSLContext) {
     }
 
     fun create(customer: Customer): Customer {
-        return db.insertInto(CUSTOMER)
-            .set(CUSTOMER.ID, customer.id)
-            .set(CUSTOMER.HANDLE, customer.handle)
-            .set(CUSTOMER.CREATED_AT, customer.createdAt)
-            .returning()
-            .fetchSingleInto(Customer::class.java)
+        try {
+            return db.insertInto(CUSTOMER)
+                .set(CUSTOMER.ID, customer.id)
+                .set(CUSTOMER.HANDLE, customer.handle)
+                .set(CUSTOMER.CREATED_AT, customer.createdAt)
+                .returning()
+                .fetchSingleInto(Customer::class.java)
+        } catch (_: DuplicateKeyException) {
+            throw IllegalArgumentException("Customer handle already taken: ${customer.handle}")
+        }
     }
 }

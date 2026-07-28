@@ -31,6 +31,10 @@ open class CustomerRecord() : UpdatableRecordImpl<CustomerRecord>(Customer.CUSTO
         set(value): Unit = set(2, value)
         get(): String? = get(2) as String?
 
+    open var displayName: String?
+        set(value): Unit = set(3, value)
+        get(): String? = get(3) as String?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -40,10 +44,11 @@ open class CustomerRecord() : UpdatableRecordImpl<CustomerRecord>(Customer.CUSTO
     /**
      * Create a detached, initialised CustomerRecord
      */
-    constructor(id: UUID? = null, createdAt: LocalDateTime? = null, handle: String? = null): this() {
+    constructor(id: UUID? = null, createdAt: LocalDateTime? = null, handle: String? = null, displayName: String? = null): this() {
         this.id = id
         this.createdAt = createdAt
         this.handle = handle
+        this.displayName = displayName
         resetChangedOnNotNull()
     }
 }

@@ -14,11 +14,9 @@ import me.rcendrow.jooq.generated.Public
 import me.rcendrow.jooq.generated.keys.CUSTOMER_HANDLE_KEY
 import me.rcendrow.jooq.generated.keys.CUSTOMER_IDENTITY__CUSTOMER_IDENTITY_CUSTOMER_ID_FKEY
 import me.rcendrow.jooq.generated.keys.CUSTOMER_PKEY
-import me.rcendrow.jooq.generated.keys.CUSTOMER_WALLET__CUSTOMER_WALLET_CUSTOMER_ID_FKEY
-import me.rcendrow.jooq.generated.keys.HOLD__HOLD_CUSTOMER_ID_FKEY
+import me.rcendrow.jooq.generated.keys.WALLET_OWNER__WALLET_OWNER_CUSTOMER_ID_FKEY
 import me.rcendrow.jooq.generated.tables.CustomerIdentity.CustomerIdentityPath
-import me.rcendrow.jooq.generated.tables.CustomerWallet.CustomerWalletPath
-import me.rcendrow.jooq.generated.tables.Hold.HoldPath
+import me.rcendrow.jooq.generated.tables.WalletOwner.WalletOwnerPath
 import me.rcendrow.jooq.generated.tables.records.CustomerRecord
 
 import org.jooq.Condition
@@ -96,6 +94,11 @@ open class Customer(
      */
     val HANDLE: TableField<CustomerRecord, String?> = createField(DSL.name("handle"), SQLDataType.VARCHAR(255).nullable(false), this, "")
 
+    /**
+     * The column <code>public.customer.display_name</code>.
+     */
+    val DISPLAY_NAME: TableField<CustomerRecord, String?> = createField(DSL.name("display_name"), SQLDataType.VARCHAR.nullable(false), this, "")
+
     private constructor(alias: Name, aliased: Table<CustomerRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<CustomerRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<CustomerRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -147,36 +150,21 @@ open class Customer(
     val customerIdentity: CustomerIdentityPath
         get(): CustomerIdentityPath = customerIdentity()
 
-    private lateinit var _customerWallet: CustomerWalletPath
+    private lateinit var _walletOwner: WalletOwnerPath
 
     /**
      * Get the implicit to-many join path to the
-     * <code>public.customer_wallet</code> table
+     * <code>public.wallet_owner</code> table
      */
-    fun customerWallet(): CustomerWalletPath {
-        if (!this::_customerWallet.isInitialized)
-            _customerWallet = CustomerWalletPath(this, null, CUSTOMER_WALLET__CUSTOMER_WALLET_CUSTOMER_ID_FKEY.inverseKey)
+    fun walletOwner(): WalletOwnerPath {
+        if (!this::_walletOwner.isInitialized)
+            _walletOwner = WalletOwnerPath(this, null, WALLET_OWNER__WALLET_OWNER_CUSTOMER_ID_FKEY.inverseKey)
 
-        return _customerWallet;
+        return _walletOwner;
     }
 
-    val customerWallet: CustomerWalletPath
-        get(): CustomerWalletPath = customerWallet()
-
-    private lateinit var _hold: HoldPath
-
-    /**
-     * Get the implicit to-many join path to the <code>public.hold</code> table
-     */
-    fun hold(): HoldPath {
-        if (!this::_hold.isInitialized)
-            _hold = HoldPath(this, null, HOLD__HOLD_CUSTOMER_ID_FKEY.inverseKey)
-
-        return _hold;
-    }
-
-    val hold: HoldPath
-        get(): HoldPath = hold()
+    val walletOwner: WalletOwnerPath
+        get(): WalletOwnerPath = walletOwner()
     override fun `as`(alias: String): Customer = Customer(DSL.name(alias), this)
     override fun `as`(alias: Name): Customer = Customer(alias, this)
     override fun `as`(alias: Table<*>): Customer = Customer(alias.qualifiedName, this)

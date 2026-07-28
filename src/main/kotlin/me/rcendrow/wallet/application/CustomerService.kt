@@ -29,26 +29,30 @@ class CustomerService(
     }
 
     @Transactional
-    fun createCustomer(handle: String, email: String?, issuer: String, externalId: String): Customer {
+    fun createCustomer(
+        handle: String,
+        displayName: String,
+        email: String?,
+        issuer: String,
+        externalId: String
+    ): Customer {
         customerIdentityRepository.findByIssuerAndExternalId(issuer, externalId)?.let {
             return handleExistingIdentity(it, handle)
-        }
-        if (customerRepository.findByHandle(handle) != null) {
-            throw IllegalArgumentException("Customer handle already taken: $handle")
         }
         val customer = Customer(
             id = Generators.timeBasedEpochRandomGenerator().generate(),
             handle = handle,
+            displayName = displayName,
             createdAt = LocalDateTime.now(),
         )
         return customerRepository.create(customer).also {
             customerIdentityRepository.create(
                 CustomerIdentity(
-                    customerId = customer.id,
+                    customerId = it.id,
                     issuer = issuer,
                     externalId = externalId,
                     email = email,
-                    createdAt = LocalDateTime.now(),
+                    createdAt = it.createdAt,
                 )
             )
         }

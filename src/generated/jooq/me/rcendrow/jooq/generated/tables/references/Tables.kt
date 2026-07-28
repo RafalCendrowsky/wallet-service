@@ -6,15 +6,16 @@ package me.rcendrow.jooq.generated.tables.references
 
 import me.rcendrow.jooq.generated.tables.Customer
 import me.rcendrow.jooq.generated.tables.CustomerIdentity
-import me.rcendrow.jooq.generated.tables.CustomerWallet
 import me.rcendrow.jooq.generated.tables.FlywaySchemaHistory
 import me.rcendrow.jooq.generated.tables.Hold
 import me.rcendrow.jooq.generated.tables.LedgerEntry
-import me.rcendrow.jooq.generated.tables.ServiceWallet
+import me.rcendrow.jooq.generated.tables.ServiceAccount
 import me.rcendrow.jooq.generated.tables.Transfer
 import me.rcendrow.jooq.generated.tables.Wallet
 import me.rcendrow.jooq.generated.tables.WalletBalance
 import me.rcendrow.jooq.generated.tables.WalletBalanceQueue
+import me.rcendrow.jooq.generated.tables.WalletOwner
+import me.rcendrow.jooq.generated.tables.WalletOwnerView
 
 
 
@@ -27,11 +28,6 @@ val CUSTOMER: Customer = Customer.CUSTOMER
  * The table <code>public.customer_identity</code>.
  */
 val CUSTOMER_IDENTITY: CustomerIdentity = CustomerIdentity.CUSTOMER_IDENTITY
-
-/**
- * The table <code>public.customer_wallet</code>.
- */
-val CUSTOMER_WALLET: CustomerWallet = CustomerWallet.CUSTOMER_WALLET
 
 /**
  * The table <code>public.flyway_schema_history</code>.
@@ -49,9 +45,9 @@ val HOLD: Hold = Hold.HOLD
 val LEDGER_ENTRY: LedgerEntry = LedgerEntry.LEDGER_ENTRY
 
 /**
- * The table <code>public.service_wallet</code>.
+ * The table <code>public.service_account</code>.
  */
-val SERVICE_WALLET: ServiceWallet = ServiceWallet.SERVICE_WALLET
+val SERVICE_ACCOUNT: ServiceAccount = ServiceAccount.SERVICE_ACCOUNT
 
 /**
  * The table <code>public.transfer</code>.
@@ -72,3 +68,13 @@ val WALLET_BALANCE: WalletBalance = WalletBalance.WALLET_BALANCE
  * The table <code>public.wallet_balance_queue</code>.
  */
 val WALLET_BALANCE_QUEUE: WalletBalanceQueue = WalletBalanceQueue.WALLET_BALANCE_QUEUE
+
+/**
+ * The table <code>public.wallet_owner</code>.
+ */
+val WALLET_OWNER: WalletOwner = WalletOwner.WALLET_OWNER
+
+/**
+ * The table <code>public.wallet_owner_view</code>.
+ */
+val WALLET_OWNER_VIEW: WalletOwnerView = WalletOwnerView.WALLET_OWNER_VIEW

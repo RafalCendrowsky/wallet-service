@@ -27,39 +27,46 @@ class TransferController(
         @AuthenticationPrincipal principal: CustomerPrincipal,
     ): TransferResponse {
         walletService.getCustomerWallet(principal.customerId, request.fromWallet!!)
-        return transferService.createTransfer(
+        val transfer = transferService.createTransfer(
             fromCustomerId = principal.customerId,
             fromWallet = request.fromWallet,
-            toCustomerHandle = request.toCustomerHandle!!,
+            toCustomerId = request.toCustomerId!!,
             amount = request.amount!!,
             idempotencyKey = request.idempotencyKey!!,
-        ).let { TransferResponse.from(it) }
+        )
+        val view = transferService.getTransfer(transfer.id)
+        return TransferResponse.from(view)
     }
 
     @GetMapping("/{id}")
     fun getTransfer(@PathVariable id: UUID): TransferResponse {
-        return transferService.getTransfer(id).let { TransferResponse.from(it) }
+        val view = transferService.getTransfer(id)
+        return TransferResponse.from(view)
     }
 
     @PostMapping("/deposits")
     @ResponseStatus(HttpStatus.CREATED)
     fun deposit(@Valid @RequestBody request: CreateDepositRequest): TransferResponse {
-        return transferService.createDeposit(
+        val transfer = transferService.createDeposit(
             customerId = request.customerId!!,
             walletId = request.walletId!!,
             amount = request.amount!!,
             idempotencyKey = request.idempotencyKey!!,
-        ).let { TransferResponse.from(it) }
+        )
+        val view = transferService.getTransfer(transfer.id)
+        return TransferResponse.from(view)
     }
 
     @PostMapping("/withdrawals")
     @ResponseStatus(HttpStatus.CREATED)
     fun withdraw(@Valid @RequestBody request: CreateWithdrawalRequest): TransferResponse {
-        return transferService.createWithdrawal(
+        val transfer = transferService.createWithdrawal(
             customerId = request.customerId!!,
             walletId = request.walletId!!,
             amount = request.amount!!,
             idempotencyKey = request.idempotencyKey!!,
-        ).let { TransferResponse.from(it) }
+        )
+        val view = transferService.getTransfer(transfer.id)
+        return TransferResponse.from(view)
     }
 }

@@ -6,5 +6,6 @@ import java.util.*
 data class Customer(
     val id: UUID,
     val handle: String,
+    val displayName: String,
     val createdAt: LocalDateTime,
 )

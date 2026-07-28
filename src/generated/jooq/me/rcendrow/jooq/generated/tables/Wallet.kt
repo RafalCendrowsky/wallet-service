@@ -10,23 +10,21 @@ import java.util.UUID
 import kotlin.collections.Collection
 
 import me.rcendrow.jooq.generated.Public
-import me.rcendrow.jooq.generated.keys.CUSTOMER_WALLET__CUSTOMER_WALLET_WALLET_ID_FKEY
 import me.rcendrow.jooq.generated.keys.HOLD__HOLD_TO_WALLET_FKEY
 import me.rcendrow.jooq.generated.keys.HOLD__HOLD_WALLET_ID_FKEY
 import me.rcendrow.jooq.generated.keys.LEDGER_ENTRY__LEDGER_ENTRY_WALLET_ID_FKEY
-import me.rcendrow.jooq.generated.keys.SERVICE_WALLET__SERVICE_WALLET_WALLET_ID_FKEY
 import me.rcendrow.jooq.generated.keys.TRANSFER__TRANSFER_FROM_WALLET_FKEY
 import me.rcendrow.jooq.generated.keys.TRANSFER__TRANSFER_TO_WALLET_FKEY
 import me.rcendrow.jooq.generated.keys.WALLET_BALANCE_QUEUE__WALLET_BALANCE_QUEUE_WALLET_ID_FKEY
 import me.rcendrow.jooq.generated.keys.WALLET_BALANCE__WALLET_BALANCE_WALLET_ID_FKEY
+import me.rcendrow.jooq.generated.keys.WALLET_OWNER__WALLET_OWNER_WALLET_ID_FKEY
 import me.rcendrow.jooq.generated.keys.WALLET_PKEY
-import me.rcendrow.jooq.generated.tables.CustomerWallet.CustomerWalletPath
 import me.rcendrow.jooq.generated.tables.Hold.HoldPath
 import me.rcendrow.jooq.generated.tables.LedgerEntry.LedgerEntryPath
-import me.rcendrow.jooq.generated.tables.ServiceWallet.ServiceWalletPath
 import me.rcendrow.jooq.generated.tables.Transfer.TransferPath
 import me.rcendrow.jooq.generated.tables.WalletBalance.WalletBalancePath
 import me.rcendrow.jooq.generated.tables.WalletBalanceQueue.WalletBalanceQueuePath
+import me.rcendrow.jooq.generated.tables.WalletOwner.WalletOwnerPath
 import me.rcendrow.jooq.generated.tables.records.WalletRecord
 
 import org.jooq.Condition
@@ -104,11 +102,6 @@ open class Wallet(
      */
     val STATUS: TableField<WalletRecord, String?> = createField(DSL.name("status"), SQLDataType.VARCHAR(255).nullable(false).defaultValue(DSL.field(DSL.raw("'ACTIVE'::character varying"), SQLDataType.VARCHAR)), this, "")
 
-    /**
-     * The column <code>public.wallet.type</code>.
-     */
-    val TYPE: TableField<WalletRecord, String?> = createField(DSL.name("type"), SQLDataType.VARCHAR(255).nullable(false).defaultValue(DSL.field(DSL.raw("'SERVICE'::character varying"), SQLDataType.VARCHAR)), this, "")
-
     private constructor(alias: Name, aliased: Table<WalletRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<WalletRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<WalletRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -142,22 +135,6 @@ open class Wallet(
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
     override fun getPrimaryKey(): UniqueKey<WalletRecord> = WALLET_PKEY
-
-    private lateinit var _customerWallet: CustomerWalletPath
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>public.customer_wallet</code> table
-     */
-    fun customerWallet(): CustomerWalletPath {
-        if (!this::_customerWallet.isInitialized)
-            _customerWallet = CustomerWalletPath(this, null, CUSTOMER_WALLET__CUSTOMER_WALLET_WALLET_ID_FKEY.inverseKey)
-
-        return _customerWallet;
-    }
-
-    val customerWallet: CustomerWalletPath
-        get(): CustomerWalletPath = customerWallet()
 
     private lateinit var _holdToWalletFkey: HoldPath
 
@@ -206,22 +183,6 @@ open class Wallet(
 
     val ledgerEntry: LedgerEntryPath
         get(): LedgerEntryPath = ledgerEntry()
-
-    private lateinit var _serviceWallet: ServiceWalletPath
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>public.service_wallet</code> table
-     */
-    fun serviceWallet(): ServiceWalletPath {
-        if (!this::_serviceWallet.isInitialized)
-            _serviceWallet = ServiceWalletPath(this, null, SERVICE_WALLET__SERVICE_WALLET_WALLET_ID_FKEY.inverseKey)
-
-        return _serviceWallet;
-    }
-
-    val serviceWallet: ServiceWalletPath
-        get(): ServiceWalletPath = serviceWallet()
 
     private lateinit var _transferFromWalletFkey: TransferPath
 
@@ -286,6 +247,22 @@ open class Wallet(
 
     val walletBalance: WalletBalancePath
         get(): WalletBalancePath = walletBalance()
+
+    private lateinit var _walletOwner: WalletOwnerPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.wallet_owner</code> table
+     */
+    fun walletOwner(): WalletOwnerPath {
+        if (!this::_walletOwner.isInitialized)
+            _walletOwner = WalletOwnerPath(this, null, WALLET_OWNER__WALLET_OWNER_WALLET_ID_FKEY.inverseKey)
+
+        return _walletOwner;
+    }
+
+    val walletOwner: WalletOwnerPath
+        get(): WalletOwnerPath = walletOwner()
     override fun `as`(alias: String): Wallet = Wallet(DSL.name(alias), this)
     override fun `as`(alias: Name): Wallet = Wallet(alias, this)
     override fun `as`(alias: Table<*>): Wallet = Wallet(alias.qualifiedName, this)

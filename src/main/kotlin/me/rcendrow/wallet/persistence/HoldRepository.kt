@@ -1,9 +1,11 @@
 package me.rcendrow.wallet.persistence
 
 import me.rcendrow.jooq.generated.tables.Hold.Companion.HOLD
+import me.rcendrow.jooq.generated.tables.references.WALLET_OWNER_VIEW
 import me.rcendrow.wallet.domain.Hold
 import me.rcendrow.wallet.domain.HoldStatus
 import org.jooq.DSLContext
+import org.jooq.Records
 import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import java.math.BigDecimal
@@ -13,11 +15,14 @@ import java.util.*
 @Repository
 class HoldRepository(private val db: DSLContext) {
 
-    fun findByCustomerIdAndId(customerId: UUID, id: UUID): Hold? {
-        return db.selectFrom(HOLD)
+    private val fromOwner = WALLET_OWNER_VIEW.`as`("fromOwner")
+    private val toOwner = WALLET_OWNER_VIEW.`as`("toOwner")
+
+    fun findByOwnerIdAndId(customerId: UUID, id: UUID): Hold? {
+        return selectWithOwners()
             .where(HOLD.ID.eq(id))
-            .and(HOLD.CUSTOMER_ID.eq(customerId))
-            .fetchSingleInto(Hold::class.java)
+            .and(HOLD.OWNER_ID.eq(customerId))
+            .fetchSingle(Records.mapping(Hold::from))
     }
 
     fun sumActiveAmount(walletId: UUID): BigDecimal {
@@ -29,26 +34,25 @@ class HoldRepository(private val db: DSLContext) {
     }
 
     fun create(hold: Hold): Hold {
-        return db.insertInto(HOLD)
+        db.insertInto(HOLD)
             .set(HOLD.ID, hold.id)
             .set(HOLD.FROM_WALLET, hold.fromWallet)
             .set(HOLD.TO_WALLET, hold.toWallet)
-            .set(HOLD.CUSTOMER_ID, hold.customerId)
+            .set(HOLD.OWNER_ID, hold.toOwner?.id)
             .set(HOLD.AMOUNT, hold.amount)
             .set(HOLD.STATUS, hold.status.name)
             .set(HOLD.EXPIRES_AT, hold.expiresAt)
             .set(HOLD.CREATED_AT, hold.createdAt)
-            .returning()
-            .fetchSingleInto(Hold::class.java)
+            .execute()
+        return hold
     }
 
     fun updateStatus(hold: Hold, status: HoldStatus): Hold {
-        return db.update(HOLD)
+        db.update(HOLD)
             .set(HOLD.STATUS, status.name)
             .where(HOLD.ID.eq(hold.id))
-            .and(HOLD.STATUS.eq(HoldStatus.ACTIVE.name))
-            .returning()
-            .fetchSingleInto(Hold::class.java)
+            .execute()
+        return hold.copy(status = status)
     }
 
     fun releaseExpiredActiveHolds() {
@@ -58,4 +62,20 @@ class HoldRepository(private val db: DSLContext) {
             .and(HOLD.EXPIRES_AT.le(LocalDateTime.now()))
             .execute()
     }
+
+    private fun selectWithOwners() = db
+        .select(
+            HOLD.ID,
+            HOLD.FROM_WALLET,
+            fromOwner.ownerField(),
+            HOLD.TO_WALLET,
+            fromOwner.ownerField(),
+            HOLD.AMOUNT,
+            HOLD.STATUS,
+            HOLD.EXPIRES_AT,
+            HOLD.CREATED_AT
+        )
+        .from(HOLD)
+        .leftJoin(fromOwner).on(fromOwner.WALLET_ID.eq(HOLD.FROM_WALLET))
+        .leftJoin(toOwner).on(toOwner.WALLET_ID.eq(HOLD.TO_WALLET))
 }

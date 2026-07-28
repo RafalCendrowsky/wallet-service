@@ -12,7 +12,7 @@ data class CreateHoldRequest(
     val fromWallet: UUID?,
 
     @field:NotNull
-    val toCustomerHandle: String?,
+    val toCustomerId: UUID?,
 
     @field:NotNull
     @field:DecimalMin("0.01")

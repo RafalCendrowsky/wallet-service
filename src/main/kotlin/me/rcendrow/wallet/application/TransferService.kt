@@ -3,9 +3,9 @@ package me.rcendrow.wallet.application
 import com.fasterxml.uuid.Generators
 import me.rcendrow.wallet.application.exception.DuplicateIdempotencyKeyException
 import me.rcendrow.wallet.domain.Transfer
-import me.rcendrow.wallet.domain.wallet.CustomerWallet
-import me.rcendrow.wallet.domain.wallet.ServiceWalletRole
+import me.rcendrow.wallet.domain.wallet.ServiceRole
 import me.rcendrow.wallet.domain.wallet.Wallet
+import me.rcendrow.wallet.domain.wallet.WalletOwnerType
 import me.rcendrow.wallet.domain.wallet.WalletStatus
 import me.rcendrow.wallet.persistence.TransferRepository
 import org.springframework.data.domain.Page
@@ -28,7 +28,7 @@ class TransferService(
     @Transactional
     fun createDeposit(customerId: UUID, walletId: UUID, amount: BigDecimal, idempotencyKey: String): Transfer {
         val wallet = walletService.getCustomerWallet(customerId, walletId)
-        val systemWallet = walletService.getServiceWalletByRole(ServiceWalletRole.EXTERNAL_SETTLEMENT)
+        val systemWallet = walletService.getServiceWalletByRole(ServiceRole.EXTERNAL_SETTLEMENT)
         return createTransfer(
             fromWallet = systemWallet,
             toWallet = wallet,
@@ -40,7 +40,7 @@ class TransferService(
     @Transactional
     fun createWithdrawal(customerId: UUID, walletId: UUID, amount: BigDecimal, idempotencyKey: String): Transfer {
         val wallet = walletService.getCustomerWallet(customerId, walletId)
-        val systemWallet = walletService.getServiceWalletByRole(ServiceWalletRole.EXTERNAL_SETTLEMENT)
+        val systemWallet = walletService.getServiceWalletByRole(ServiceRole.EXTERNAL_SETTLEMENT)
         return createTransfer(
             fromWallet = wallet,
             toWallet = systemWallet,
@@ -53,11 +53,11 @@ class TransferService(
     fun createTransfer(
         fromCustomerId: UUID,
         fromWallet: UUID,
-        toCustomerHandle: String,
+        toCustomerId: UUID,
         amount: BigDecimal,
         idempotencyKey: String,
     ): Transfer {
-        val toCustomer = customerService.getCustomerByHandle(toCustomerHandle)
+        val toCustomer = customerService.getCustomer(toCustomerId)
         val to = walletService.getCustomerWallet(toCustomer.id)
         val from = walletService.getCustomerWallet(fromCustomerId, fromWallet)
         return createTransfer(
@@ -87,14 +87,16 @@ class TransferService(
 
         transferRepository.findByIdempotencyKey(idempotencyKey)?.let { return it }
 
-        if (fromWallet is CustomerWallet) {
+        if (fromWallet.owner.type == WalletOwnerType.CUSTOMER) {
             walletService.lockAndVerifyBalance(fromWallet, amount)
         }
 
         val transfer = Transfer(
             id = Generators.timeBasedEpochRandomGenerator().generate(),
             fromWallet = fromWallet.id,
+            fromOwner = fromWallet.owner,
             toWallet = toWallet.id,
+            toOwner = toWallet.owner,
             amount = amount,
             idempotencyKey = idempotencyKey,
             createdAt = LocalDateTime.now(),

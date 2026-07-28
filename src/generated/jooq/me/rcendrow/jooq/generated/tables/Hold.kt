@@ -14,10 +14,8 @@ import kotlin.collections.List
 import me.rcendrow.jooq.generated.Public
 import me.rcendrow.jooq.generated.indexes.HOLD_WALLET_STATUS_IDX
 import me.rcendrow.jooq.generated.keys.HOLD_PKEY
-import me.rcendrow.jooq.generated.keys.HOLD__HOLD_CUSTOMER_ID_FKEY
 import me.rcendrow.jooq.generated.keys.HOLD__HOLD_TO_WALLET_FKEY
 import me.rcendrow.jooq.generated.keys.HOLD__HOLD_WALLET_ID_FKEY
-import me.rcendrow.jooq.generated.tables.Customer.CustomerPath
 import me.rcendrow.jooq.generated.tables.Wallet.WalletPath
 import me.rcendrow.jooq.generated.tables.records.HoldRecord
 
@@ -117,11 +115,6 @@ open class Hold(
      */
     val TO_WALLET: TableField<HoldRecord, UUID?> = createField(DSL.name("to_wallet"), SQLDataType.UUID.nullable(false), this, "")
 
-    /**
-     * The column <code>public.hold.customer_id</code>.
-     */
-    val CUSTOMER_ID: TableField<HoldRecord, UUID?> = createField(DSL.name("customer_id"), SQLDataType.UUID.nullable(false), this, "")
-
     private constructor(alias: Name, aliased: Table<HoldRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<HoldRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<HoldRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -156,22 +149,7 @@ open class Hold(
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
     override fun getIndexes(): List<Index> = listOf(HOLD_WALLET_STATUS_IDX)
     override fun getPrimaryKey(): UniqueKey<HoldRecord> = HOLD_PKEY
-    override fun getReferences(): List<ForeignKey<HoldRecord, *>> = listOf(HOLD__HOLD_CUSTOMER_ID_FKEY, HOLD__HOLD_TO_WALLET_FKEY, HOLD__HOLD_WALLET_ID_FKEY)
-
-    private lateinit var _customer: CustomerPath
-
-    /**
-     * Get the implicit join path to the <code>public.customer</code> table.
-     */
-    fun customer(): CustomerPath {
-        if (!this::_customer.isInitialized)
-            _customer = CustomerPath(this, HOLD__HOLD_CUSTOMER_ID_FKEY, null)
-
-        return _customer;
-    }
-
-    val customer: CustomerPath
-        get(): CustomerPath = customer()
+    override fun getReferences(): List<ForeignKey<HoldRecord, *>> = listOf(HOLD__HOLD_TO_WALLET_FKEY, HOLD__HOLD_WALLET_ID_FKEY)
 
     private lateinit var _holdToWalletFkey: WalletPath
 

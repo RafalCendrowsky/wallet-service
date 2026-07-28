@@ -150,7 +150,7 @@ class WalletServiceWebTests {
                     jsonMapper.writeValueAsString(
                         CreateTransferRequest(
                             fromWallet = poorWallet.id,
-                            toCustomerHandle = "rich",
+                            toCustomerId = richCustomer.id,
                             amount = BigDecimal("1.00"),
                             idempotencyKey = UUID.randomUUID().toString(),
                         )
@@ -168,7 +168,7 @@ class WalletServiceWebTests {
         mockMvc.perform(
             post("/transfers")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"fromWallet": null, "toCustomerHandle": null, "amount": null, "idempotencyKey": null}""")
+                .content("""{"fromWallet": null, "toCustomerId": null, "amount": null, "idempotencyKey": null}""")
                 .with(customerPrincipal(customer.id))
         )
             .andExpect(status().isBadRequest)

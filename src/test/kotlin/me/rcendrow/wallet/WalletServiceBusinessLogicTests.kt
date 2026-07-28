@@ -14,7 +14,7 @@ import me.rcendrow.wallet.application.exception.NotFoundException
 import me.rcendrow.wallet.domain.Customer
 import me.rcendrow.wallet.domain.Hold
 import me.rcendrow.wallet.domain.HoldStatus
-import me.rcendrow.wallet.domain.wallet.ServiceWalletRole
+import me.rcendrow.wallet.domain.wallet.ServiceRole
 import me.rcendrow.wallet.domain.wallet.WalletStatus
 import me.rcendrow.wallet.persistence.wallet.WalletBalanceQueueRepository
 import org.assertj.core.api.Assertions.assertThat
@@ -83,7 +83,7 @@ class WalletServiceBusinessLogicTests {
                 .fetchSingle()
             db.insertInto(SERVICE_WALLET)
                 .set(SERVICE_WALLET.WALLET_ID, record[WALLET.ID])
-                .set(SERVICE_WALLET.ROLE, ServiceWalletRole.EXTERNAL_SETTLEMENT.name)
+                .set(SERVICE_WALLET.ROLE, ServiceRole.EXTERNAL_SETTLEMENT.name)
                 .execute()
             db.insertInto(WALLET_BALANCE)
                 .set(WALLET_BALANCE.WALLET_ID, record[WALLET.ID])
@@ -439,7 +439,7 @@ class WalletServiceBusinessLogicTests {
                 transferService.createTransfer(
                     fromCustomerId = senderCustomer.id,
                     fromWallet = sender.id,
-                    toCustomerHandle = receiverCustomer.handle,
+                    toCustomerId = receiverCustomer.id,
                     amount = BigDecimal("50.00"),
                     idempotencyKey = UUID.randomUUID().toString()
                 )
@@ -482,7 +482,7 @@ class WalletServiceBusinessLogicTests {
                 transferService.createTransfer(
                     fromCustomerId = senderCustomer.id,
                     fromWallet = wallet.id,
-                    toCustomerHandle = senderCustomer.handle,
+                    toCustomerId = senderCustomer.id,
                     amount = BigDecimal("50.00"),
                     idempotencyKey = UUID.randomUUID().toString()
                 )
@@ -504,7 +504,7 @@ class WalletServiceBusinessLogicTests {
                 transferService.createTransfer(
                     fromCustomerId = senderCustomer.id,
                     fromWallet = sender.id,
-                    toCustomerHandle = receiverCustomer.handle,
+                    toCustomerId = receiverCustomer.id,
                     amount = BigDecimal("1.00"),
                     idempotencyKey = UUID.randomUUID().toString()
                 )
@@ -528,14 +528,14 @@ class WalletServiceBusinessLogicTests {
             val first = transferService.createTransfer(
                 senderCustomer.id,
                 sender.id,
-                receiverCustomer.handle,
+                receiverCustomer.id,
                 BigDecimal("10.00"),
                 key
             )
             val second = transferService.createTransfer(
                 senderCustomer.id,
                 sender.id,
-                receiverCustomer.handle,
+                receiverCustomer.id,
                 BigDecimal("10.00"),
                 key
             )
@@ -558,7 +558,7 @@ class WalletServiceBusinessLogicTests {
                 transferService.createTransfer(
                     senderCustomer.id,
                     sender.id,
-                    receiverCustomer.handle,
+                    receiverCustomer.id,
                     BigDecimal("99999.00"),
                     key
                 )
@@ -588,16 +588,16 @@ class WalletServiceBusinessLogicTests {
             val barrier = CyclicBarrier(2)
             val pool = Executors.newFixedThreadPool(2)
             val tasks = listOf(
-                receiver1Customer.handle to receiver1.id,
-                receiver2Customer.handle to receiver2.id,
-            ).map { (handle, _) ->
+                receiver1Customer,
+                receiver2Customer,
+            ).map { receiver ->
                 Callable {
                     try {
                         barrier.await()
                         transferService.createTransfer(
                             fromCustomerId = senderCustomer.id,
                             fromWallet = sender.id,
-                            toCustomerHandle = handle,
+                            toCustomerId = receiver.id,
                             amount = BigDecimal("80.00"),
                             idempotencyKey = UUID.randomUUID().toString()
                         )
@@ -647,7 +647,7 @@ class WalletServiceBusinessLogicTests {
                         transferService.createTransfer(
                             fromCustomerId = senderCustomer.id,
                             fromWallet = sender.id,
-                            toCustomerHandle = receiver.handle,
+                            toCustomerId = receiver.id,
                             amount = BigDecimal("100.00"),
                             idempotencyKey = UUID.randomUUID().toString()
                         )
@@ -686,7 +686,7 @@ class WalletServiceBusinessLogicTests {
             transferService.createTransfer(
                 senderCustomer.id,
                 sender.id,
-                receiverCustomer.handle,
+                receiverCustomer.id,
                 BigDecimal("70.00"),
                 UUID.randomUUID().toString()
             )
@@ -711,21 +711,21 @@ class WalletServiceBusinessLogicTests {
             transferService.createTransfer(
                 senderCustomer.id,
                 sender.id,
-                receiverCustomer.handle,
+                receiverCustomer.id,
                 BigDecimal("10.999"),
                 UUID.randomUUID().toString()
             )
             transferService.createTransfer(
                 senderCustomer.id,
                 sender.id,
-                receiverCustomer.handle,
+                receiverCustomer.id,
                 BigDecimal("20.444"),
                 UUID.randomUUID().toString()
             )
             transferService.createTransfer(
                 senderCustomer.id,
                 sender.id,
-                receiverCustomer.handle,
+                receiverCustomer.id,
                 BigDecimal("30.555"),
                 UUID.randomUUID().toString()
             )
@@ -755,7 +755,7 @@ class WalletServiceBusinessLogicTests {
                 transferService.createTransfer(
                     senderCustomer.id,
                     sender.id,
-                    receiverCustomer.handle,
+                    receiverCustomer.id,
                     BigDecimal("10.00"),
                     key
                 )
@@ -784,7 +784,7 @@ class WalletServiceBusinessLogicTests {
                 holdService.placeHold(
                     customer.id,
                     wallet.id,
-                    otherCustomer.handle,
+                    otherCustomer.id,
                     BigDecimal("30.00"),
                     LocalDateTime.now().plusDays(1)
                 )
@@ -816,7 +816,7 @@ class WalletServiceBusinessLogicTests {
                 holdService.placeHold(
                     customer.id,
                     wallet.id,
-                    otherCustomer.handle,
+                    otherCustomer.id,
                     BigDecimal("30.00"),
                     LocalDateTime.now().plusDays(1)
                 )
@@ -837,7 +837,7 @@ class WalletServiceBusinessLogicTests {
                 holdService.placeHold(
                     customer.id,
                     wallet.id,
-                    otherCustomer.handle,
+                    otherCustomer.id,
                     BigDecimal("200.00"),
                     LocalDateTime.now().plusDays(1)
                 )
@@ -864,7 +864,7 @@ class WalletServiceBusinessLogicTests {
             val hold = holdService.placeHold(
                 senderCustomer.id,
                 sender.id,
-                receiverCustomer.handle,
+                receiverCustomer.id,
                 BigDecimal("50.00"),
                 LocalDateTime.now().plusDays(1)
             )
@@ -893,7 +893,7 @@ class WalletServiceBusinessLogicTests {
                 holdService.placeHold(
                     senderCustomer.id,
                     sender.id,
-                    receiverCustomer.handle,
+                    receiverCustomer.id,
                     BigDecimal("50.00"),
 
                     LocalDateTime.now().minusDays(1)
@@ -904,7 +904,7 @@ class WalletServiceBusinessLogicTests {
                 holdService.placeHold(
                     senderCustomer.id,
                     sender.id,
-                    receiverCustomer.handle,
+                    receiverCustomer.id,
                     BigDecimal("50.00"),
 
                     LocalDateTime.now().plusDays(1)
@@ -946,7 +946,7 @@ class WalletServiceBusinessLogicTests {
             }
 
             val tasks = (0 until numThreads).map { i ->
-                val receiverHandle = if (i % 2 == 1) transferReceivers[i / 2].handle else null
+                val receiverId = if (i % 2 == 1) transferReceivers[i / 2].id else receiverCustomer.id
                 Callable {
                     try {
                         barrier.await()
@@ -954,7 +954,7 @@ class WalletServiceBusinessLogicTests {
                             holdService.placeHold(
                                 senderCustomer.id,
                                 sender.id,
-                                receiverCustomer.handle,
+                                receiverId,
                                 BigDecimal("100.00"),
                                 LocalDateTime.now().plusDays(1)
                             )
@@ -963,7 +963,7 @@ class WalletServiceBusinessLogicTests {
                             transferService.createTransfer(
                                 fromCustomerId = senderCustomer.id,
                                 fromWallet = sender.id,
-                                toCustomerHandle = receiverCustomer.handle,
+                                toCustomerId = receiverCustomer.id,
                                 amount = BigDecimal("100.00"),
                                 idempotencyKey = UUID.randomUUID().toString()
                             )

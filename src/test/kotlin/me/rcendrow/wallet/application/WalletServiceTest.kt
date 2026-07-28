@@ -4,16 +4,15 @@ import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import me.rcendrow.wallet.application.exception.WalletStatusException
 import me.rcendrow.wallet.application.exception.InsufficientFundsException
 import me.rcendrow.wallet.application.exception.NotFoundException
-import me.rcendrow.wallet.domain.Customer
+import me.rcendrow.wallet.application.exception.WalletStatusException
+import me.rcendrow.wallet.domain.wallet.CustomerWallet
 import me.rcendrow.wallet.domain.wallet.WalletBalance
 import me.rcendrow.wallet.domain.wallet.WalletStatus
-import me.rcendrow.wallet.domain.wallet.CustomerWallet
-import me.rcendrow.wallet.persistence.wallet.WalletBalanceRepository
-import me.rcendrow.wallet.persistence.wallet.CustomerWalletRepository
 import me.rcendrow.wallet.persistence.wallet.ServiceWalletRepository
+import me.rcendrow.wallet.persistence.wallet.WalletBalanceRepository
+import me.rcendrow.wallet.persistence.wallet.WalletRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
@@ -24,16 +23,15 @@ import java.util.*
 
 class WalletServiceTest {
 
-    private val customerWalletRepository: CustomerWalletRepository = mockk()
+    private val walletRepository: WalletRepository = mockk()
     private val serviceWalletRepository: ServiceWalletRepository = mockk()
     private val customerService: CustomerService = mockk()
     private val walletBalanceService: WalletBalanceService = mockk()
     private val walletBalanceRepository: WalletBalanceRepository = mockk()
     private val service =
         WalletService(
-            customerService,
             walletBalanceService,
-            customerWalletRepository,
+            walletRepository,
             serviceWalletRepository,
             walletBalanceRepository
         )
@@ -41,7 +39,7 @@ class WalletServiceTest {
     @AfterEach
     fun tearDown() {
         clearMocks(
-            customerWalletRepository,
+            walletRepository,
             serviceWalletRepository,
             customerService,
             walletBalanceService,
@@ -53,7 +51,7 @@ class WalletServiceTest {
     fun `should create wallet`() {
         val customerId = UUID.randomUUID()
         every { customerService.getCustomer(customerId) } returns mockk()
-        every { customerWalletRepository.create(any()) } answers { firstArg() }
+        every { walletRepository.create(any()) } answers { firstArg() }
         every { walletBalanceRepository.create(any()) } returns Unit
 
         val result = service.createCustomerWallet(customerId)
@@ -62,7 +60,7 @@ class WalletServiceTest {
         assertThat(result.status).isEqualTo(WalletStatus.ACTIVE)
         assertThat(result.id).isNotNull
         assertThat(result.createdAt).isNotNull
-        verify { customerWalletRepository.create(result) }
+        verify { walletRepository.create(result) }
         verify { walletBalanceRepository.create(result.id) }
     }
 
@@ -71,7 +69,7 @@ class WalletServiceTest {
         val customerId = UUID.randomUUID()
         val id = UUID.randomUUID()
         val wallet = walletWithStatus(customerId, WalletStatus.ACTIVE)
-        every { customerWalletRepository.findByCustomerIdAndWalletId(customerId, id) } returns wallet
+        every { walletRepository.findByCustomerIdAndWalletId(customerId, id) } returns wallet
 
         val result = service.getCustomerWallet(customerId, id)
 
@@ -82,7 +80,7 @@ class WalletServiceTest {
     fun `should throw NotFoundException for unknown wallet`() {
         val customerId = UUID.randomUUID()
         val id = UUID.randomUUID()
-        every { customerWalletRepository.findByCustomerIdAndWalletId(customerId, id) } returns null
+        every { walletRepository.findByCustomerIdAndWalletId(customerId, id) } returns null
 
         assertThatThrownBy { service.getCustomerWallet(customerId, id) }
             .isInstanceOf(NotFoundException::class.java)
@@ -92,7 +90,7 @@ class WalletServiceTest {
     fun `should return wallet by customer id`() {
         val customerId = UUID.randomUUID()
         val wallet = walletWithStatus(customerId, WalletStatus.ACTIVE)
-        every { customerWalletRepository.findByCustomerId(customerId) } returns wallet
+        every { walletRepository.findByCustomerId(customerId) } returns wallet
 
         val result = service.getCustomerWallet(customerId)
 
@@ -102,7 +100,7 @@ class WalletServiceTest {
     @Test
     fun `should throw NotFoundException when customer has no wallet`() {
         val customerId = UUID.randomUUID()
-        every { customerWalletRepository.findByCustomerId(customerId) } returns null
+        every { walletRepository.findByCustomerId(customerId) } returns null
 
         assertThatThrownBy { service.getCustomerWallet(customerId) }
             .isInstanceOf(NotFoundException::class.java)
@@ -111,7 +109,7 @@ class WalletServiceTest {
     @Test
     fun `should return wallet by wallet id`() {
         val wallet = walletWithStatus(UUID.randomUUID(), WalletStatus.ACTIVE)
-        every { customerWalletRepository.findById(wallet.id) } returns wallet
+        every { walletRepository.findById(wallet.id) } returns wallet
 
         val result = service.getCustomerWalletById(wallet.id)
 
@@ -121,7 +119,7 @@ class WalletServiceTest {
     @Test
     fun `should throw NotFoundException for unknown wallet id`() {
         val walletId = UUID.randomUUID()
-        every { customerWalletRepository.findById(walletId) } returns null
+        every { walletRepository.findById(walletId) } returns null
 
         assertThatThrownBy { service.getCustomerWalletById(walletId) }
             .isInstanceOf(NotFoundException::class.java)
@@ -131,7 +129,7 @@ class WalletServiceTest {
     fun `should return balance with available balance`() {
         val customerId = UUID.randomUUID()
         val wallet = walletWithStatus(customerId, WalletStatus.ACTIVE)
-        every { customerWalletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
+        every { walletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
         every { walletBalanceService.findBalance(wallet.id) } returns WalletBalance(
             walletId = wallet.id,
             balance = BigDecimal("100.00"),
@@ -148,9 +146,9 @@ class WalletServiceTest {
     fun `should suspend active wallet by customer`() {
         val customerId = UUID.randomUUID()
         val wallet = walletWithStatus(customerId, WalletStatus.ACTIVE)
-        every { customerWalletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
+        every { walletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
         every {
-            customerWalletRepository.updateStatus(
+            walletRepository.updateStatus(
                 wallet,
                 WalletStatus.SUSPENDED
             )
@@ -164,9 +162,9 @@ class WalletServiceTest {
     @Test
     fun `should suspend active wallet by admin`() {
         val wallet = walletWithStatus(UUID.randomUUID(), WalletStatus.ACTIVE)
-        every { customerWalletRepository.findById(wallet.id) } returns wallet
+        every { walletRepository.findById(wallet.id) } returns wallet
         every {
-            customerWalletRepository.updateStatus(
+            walletRepository.updateStatus(
                 wallet,
                 WalletStatus.SUSPENDED
             )
@@ -181,9 +179,9 @@ class WalletServiceTest {
     fun `should allow updating status of non-closed wallet`() {
         val customerId = UUID.randomUUID()
         val wallet = walletWithStatus(customerId, WalletStatus.SUSPENDED)
-        every { customerWalletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
+        every { walletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
         every {
-            customerWalletRepository.updateStatus(
+            walletRepository.updateStatus(
                 wallet,
                 WalletStatus.SUSPENDED
             )
@@ -198,9 +196,9 @@ class WalletServiceTest {
     fun `should close active wallet`() {
         val customerId = UUID.randomUUID()
         val wallet = walletWithStatus(customerId, WalletStatus.ACTIVE)
-        every { customerWalletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
+        every { walletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
         every {
-            customerWalletRepository.updateStatus(
+            walletRepository.updateStatus(
                 wallet,
                 WalletStatus.CLOSED
             )
@@ -215,9 +213,9 @@ class WalletServiceTest {
     fun `should close suspended wallet`() {
         val customerId = UUID.randomUUID()
         val wallet = walletWithStatus(customerId, WalletStatus.SUSPENDED)
-        every { customerWalletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
+        every { walletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
         every {
-            customerWalletRepository.updateStatus(
+            walletRepository.updateStatus(
                 wallet,
                 WalletStatus.CLOSED
             )
@@ -232,7 +230,7 @@ class WalletServiceTest {
     fun `should not close already closed wallet`() {
         val customerId = UUID.randomUUID()
         val wallet = walletWithStatus(customerId, WalletStatus.CLOSED)
-        every { customerWalletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
+        every { walletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
 
         assertThatThrownBy { service.updateWalletStatus(customerId, wallet.id, WalletStatus.CLOSED) }
             .isInstanceOf(WalletStatusException::class.java)
@@ -242,9 +240,9 @@ class WalletServiceTest {
     fun `should activate suspended wallet`() {
         val customerId = UUID.randomUUID()
         val wallet = walletWithStatus(customerId, WalletStatus.SUSPENDED)
-        every { customerWalletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
+        every { walletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
         every {
-            customerWalletRepository.updateStatus(
+            walletRepository.updateStatus(
                 wallet,
                 WalletStatus.ACTIVE
             )
@@ -259,9 +257,9 @@ class WalletServiceTest {
     fun `should allow reactivating active wallet`() {
         val customerId = UUID.randomUUID()
         val wallet = walletWithStatus(customerId, WalletStatus.ACTIVE)
-        every { customerWalletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
+        every { walletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
         every {
-            customerWalletRepository.updateStatus(
+            walletRepository.updateStatus(
                 wallet,
                 WalletStatus.ACTIVE
             )
@@ -276,8 +274,8 @@ class WalletServiceTest {
     fun `should pass verification when balance is sufficient`() {
         val customerId = UUID.randomUUID()
         val wallet = walletWithStatus(customerId, WalletStatus.ACTIVE)
-        every { customerWalletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
-        every { customerWalletRepository.lockWallet(wallet.id) } returns Unit
+        every { walletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
+        every { walletRepository.lockWallet(wallet.id) } returns Unit
         every { walletBalanceService.findBalance(wallet.id) } returns WalletBalance(
             walletId = wallet.id,
             balance = BigDecimal("100.00"),
@@ -286,7 +284,7 @@ class WalletServiceTest {
 
         service.lockAndVerifyBalance(wallet, BigDecimal("50.00"))
 
-        verify { customerWalletRepository.lockWallet(wallet.id) }
+        verify { walletRepository.lockWallet(wallet.id) }
         verify { walletBalanceService.findBalance(wallet.id) }
     }
 
@@ -294,8 +292,8 @@ class WalletServiceTest {
     fun `should throw InsufficientFundsException when balance is insufficient`() {
         val customerId = UUID.randomUUID()
         val wallet = walletWithStatus(customerId, WalletStatus.ACTIVE)
-        every { customerWalletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
-        every { customerWalletRepository.lockWallet(wallet.id) } returns Unit
+        every { walletRepository.findByCustomerIdAndWalletId(customerId, wallet.id) } returns wallet
+        every { walletRepository.lockWallet(wallet.id) } returns Unit
         every { walletBalanceService.findBalance(wallet.id) } returns WalletBalance(
             walletId = wallet.id,
             balance = BigDecimal("30.00"),

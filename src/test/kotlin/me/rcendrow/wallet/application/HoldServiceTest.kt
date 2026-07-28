@@ -35,7 +35,7 @@ class HoldServiceTest {
     fun `should place hold when sufficient available balance`() {
         val customerId = UUID.randomUUID()
         val fromWallet = UUID.randomUUID()
-        val toCustomerHandle = "test-handle"
+        val toCustomerId = UUID.randomUUID()
         val expiresAt = LocalDateTime.now().plusDays(1)
         val sender = CustomerWallet(
             id = fromWallet,
@@ -51,17 +51,17 @@ class HoldServiceTest {
             createdAt = LocalDateTime.now()
         )
         every { receiverCustomer.id } returns receiver.customerId
-        every { customerService.getCustomerByHandle(toCustomerHandle) } returns receiverCustomer
+        every { customerService.getCustomer(toCustomerId) } returns receiverCustomer
         every { walletService.getCustomerWallet(any()) } returns receiver
         every { walletService.getCustomerWallet(customerId, fromWallet) } returns sender
         every { walletService.lockAndVerifyBalance(sender, BigDecimal("30.00")) } returns Unit
         every { holdRepository.create(any()) } answers { firstArg() }
 
-        val result = service.placeHold(customerId, fromWallet, toCustomerHandle, BigDecimal("30.00"), expiresAt)
+        val result = service.placeHold(customerId, fromWallet, toCustomerId, BigDecimal("30.00"), expiresAt)
 
         assertThat(result.fromWallet).isEqualTo(fromWallet)
         assertThat(result.toWallet).isEqualTo(receiver.id)
-        assertThat(result.customerId).isEqualTo(customerId)
+        assertThat(result.ownerId).isEqualTo(receiverCustomer.id)
         assertThat(result.amount).isEqualByComparingTo(BigDecimal("30.00"))
         assertThat(result.status).isEqualTo(HoldStatus.ACTIVE)
         assertThat(result.expiresAt).isEqualTo(expiresAt)
@@ -81,7 +81,7 @@ class HoldServiceTest {
         every { walletService.getCustomerWallet(customerId, fromWallet) } returns wallet
 
         assertThatThrownBy {
-            service.placeHold(customerId, fromWallet, "handle", BigDecimal("30.00"), LocalDateTime.now().plusDays(1))
+            service.placeHold(customerId, fromWallet, UUID.randomUUID(), BigDecimal("30.00"), LocalDateTime.now().plusDays(1))
         }.isInstanceOf(WalletStatusException::class.java)
     }
 
@@ -89,7 +89,6 @@ class HoldServiceTest {
     fun `should reject hold when available balance insufficient`() {
         val customerId = UUID.randomUUID()
         val fromWallet = UUID.randomUUID()
-        val toWallet = UUID.randomUUID()
         val wallet = CustomerWallet(
             id = fromWallet,
             customerId = customerId,
@@ -101,7 +100,7 @@ class HoldServiceTest {
                 InsufficientFundsException(fromWallet, BigDecimal("20.00"), BigDecimal("30.00"))
 
         assertThatThrownBy {
-            service.placeHold(customerId, fromWallet, "handle", BigDecimal("30.00"), LocalDateTime.now().plusDays(1))
+            service.placeHold(customerId, fromWallet, UUID.randomUUID(), BigDecimal("30.00"), LocalDateTime.now().plusDays(1))
         }.isInstanceOf(InsufficientFundsException::class.java)
     }
 
@@ -115,7 +114,7 @@ class HoldServiceTest {
             id = holdId,
             fromWallet = fromWallet,
             toWallet = toWallet,
-            customerId = customerId,
+            ownerId = customerId,
             amount = BigDecimal("50.00"),
             status = HoldStatus.ACTIVE,
             expiresAt = LocalDateTime.now().plusDays(1),
@@ -128,7 +127,7 @@ class HoldServiceTest {
         val to = CustomerWallet(
             id = toWallet, customerId = UUID.randomUUID(), status = WalletStatus.ACTIVE, createdAt = LocalDateTime.now()
         )
-        every { holdRepository.findByCustomerIdAndId(customerId, holdId) } returns hold
+        every { holdRepository.findByOwnerIdAndId(customerId, holdId) } returns hold
         every { walletService.getCustomerWallet(customerId, fromWallet) } returns from
         every { walletService.getCustomerWalletById(toWallet) } returns to
         every { transferService.createTransfer(from, to, BigDecimal("50.00"), "hold-$holdId") } returns transfer
@@ -148,13 +147,13 @@ class HoldServiceTest {
             id = holdId,
             fromWallet = UUID.randomUUID(),
             toWallet = UUID.randomUUID(),
-            customerId = customerId,
+            ownerId = customerId,
             amount = BigDecimal("50.00"),
             status = HoldStatus.ACTIVE,
             expiresAt = LocalDateTime.now().plusDays(1),
             createdAt = LocalDateTime.now(),
         )
-        every { holdRepository.findByCustomerIdAndId(customerId, holdId) } returns hold
+        every { holdRepository.findByOwnerIdAndId(customerId, holdId) } returns hold
         every { holdRepository.updateStatus(hold, HoldStatus.RELEASED) } returns hold
 
         service.releaseHold(customerId, holdId)

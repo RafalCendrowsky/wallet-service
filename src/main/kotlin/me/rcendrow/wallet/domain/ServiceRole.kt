@@ -1,5 +1,5 @@
 package me.rcendrow.wallet.domain.wallet
 
-enum class ServiceWalletRole {
+enum class ServiceRole {
     EXTERNAL_SETTLEMENT
 }

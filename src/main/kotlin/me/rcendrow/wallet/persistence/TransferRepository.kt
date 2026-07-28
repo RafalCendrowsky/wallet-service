@@ -1,9 +1,11 @@
 package me.rcendrow.wallet.persistence
 
 import me.rcendrow.jooq.generated.tables.references.TRANSFER
+import me.rcendrow.jooq.generated.tables.references.WALLET_OWNER_VIEW
 import me.rcendrow.wallet.application.exception.DuplicateIdempotencyKeyException
 import me.rcendrow.wallet.domain.Transfer
 import org.jooq.DSLContext
+import org.jooq.Records
 import org.jooq.impl.DSL
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.Page
@@ -14,26 +16,29 @@ import java.util.*
 
 @Repository
 class TransferRepository(private val db: DSLContext) {
+    private val fromOwner = WALLET_OWNER_VIEW.`as`("fromOwner")
+    private val toOwner = WALLET_OWNER_VIEW.`as`("toOwner")
 
     fun findById(id: UUID): Transfer? {
-        return db.selectFrom(TRANSFER)
+        return selectWithOwners()
             .where(TRANSFER.ID.eq(id))
-            .fetchOneInto(Transfer::class.java)
+            .fetchOne(Records.mapping(Transfer::from))
     }
 
     fun findByIdempotencyKey(key: String): Transfer? {
-        return db.selectFrom(TRANSFER)
+        return selectWithOwners()
             .where(TRANSFER.IDEMPOTENCY_KEY.eq(key))
             .fetchOneInto(Transfer::class.java)
     }
 
     fun findByWalletId(walletId: UUID, pageable: Pageable): Page<Transfer> {
-        val records = db.selectFrom(TRANSFER)
+        val records = selectWithOwners()
             .where(TRANSFER.FROM_WALLET.eq(walletId).or(TRANSFER.TO_WALLET.eq(walletId)))
             .orderBy(TRANSFER.CREATED_AT.desc())
             .limit(pageable.pageSize)
             .offset(pageable.offset)
-            .fetchInto(Transfer::class.java)
+            .fetch(Records.mapping(Transfer::from))
+            .filterNotNull()
 
         val total = db.select(DSL.count())
             .from(TRANSFER)
@@ -45,15 +50,15 @@ class TransferRepository(private val db: DSLContext) {
 
     fun create(transfer: Transfer): Transfer {
         try {
-            return db.insertInto(TRANSFER)
+            db.insertInto(TRANSFER)
                 .set(TRANSFER.ID, transfer.id)
                 .set(TRANSFER.FROM_WALLET, transfer.fromWallet)
                 .set(TRANSFER.TO_WALLET, transfer.toWallet)
                 .set(TRANSFER.AMOUNT, transfer.amount)
                 .set(TRANSFER.IDEMPOTENCY_KEY, transfer.idempotencyKey)
                 .set(TRANSFER.CREATED_AT, transfer.createdAt)
-                .returning()
-                .fetchSingleInto(Transfer::class.java)
+                .execute()
+            return transfer
         } catch (e: DataIntegrityViolationException) {
             val existing = findByIdempotencyKey(transfer.idempotencyKey)
             if (existing != null) {
@@ -62,4 +67,18 @@ class TransferRepository(private val db: DSLContext) {
             throw e
         }
     }
+
+    private fun selectWithOwners() = db
+        .select(
+            TRANSFER.ID,
+            TRANSFER.FROM_WALLET,
+            fromOwner.ownerField(),
+            TRANSFER.TO_WALLET,
+            fromOwner.ownerField(),
+            TRANSFER.AMOUNT,
+            TRANSFER.IDEMPOTENCY_KEY,
+            TRANSFER.CREATED_AT,
+        ).from(TRANSFER)
+        .leftJoin(fromOwner).on(fromOwner.WALLET_ID.eq(TRANSFER.FROM_WALLET))
+        .leftJoin(toOwner).on(toOwner.WALLET_ID.eq(TRANSFER.TO_WALLET))
 }

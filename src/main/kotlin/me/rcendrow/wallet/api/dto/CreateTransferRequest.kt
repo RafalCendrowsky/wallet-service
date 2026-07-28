@@ -10,8 +10,8 @@ data class CreateTransferRequest(
     @field:NotNull
     val fromWallet: UUID?,
 
-    @field:NotBlank
-    val toCustomerHandle: String?,
+    @field:NotNull
+    val toCustomerId: UUID?,
 
     @field:NotNull
     @field:DecimalMin("0.01")

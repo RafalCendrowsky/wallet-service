@@ -31,10 +31,6 @@ open class WalletRecord() : UpdatableRecordImpl<WalletRecord>(Wallet.WALLET) {
         set(value): Unit = set(2, value)
         get(): String? = get(2) as String?
 
-    open var type: String?
-        set(value): Unit = set(3, value)
-        get(): String? = get(3) as String?
-
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -44,11 +40,10 @@ open class WalletRecord() : UpdatableRecordImpl<WalletRecord>(Wallet.WALLET) {
     /**
      * Create a detached, initialised WalletRecord
      */
-    constructor(id: UUID? = null, createdAt: LocalDateTime? = null, status: String? = null, type: String? = null): this() {
+    constructor(id: UUID? = null, createdAt: LocalDateTime? = null, status: String? = null): this() {
         this.id = id
         this.createdAt = createdAt
         this.status = status
-        this.type = type
         resetChangedOnNotNull()
     }
 }

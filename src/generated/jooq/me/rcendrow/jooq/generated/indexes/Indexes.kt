@@ -8,6 +8,7 @@ import me.rcendrow.jooq.generated.tables.CustomerIdentity
 import me.rcendrow.jooq.generated.tables.FlywaySchemaHistory
 import me.rcendrow.jooq.generated.tables.Hold
 import me.rcendrow.jooq.generated.tables.Transfer
+import me.rcendrow.jooq.generated.tables.WalletOwner
 
 import org.jooq.Index
 import org.jooq.impl.DSL
@@ -23,3 +24,5 @@ val FLYWAY_SCHEMA_HISTORY_S_IDX: Index = Internal.createIndex(DSL.name("flyway_s
 val HOLD_WALLET_STATUS_IDX: Index = Internal.createIndex(DSL.name("hold_wallet_status_idx"), Hold.HOLD, arrayOf(Hold.HOLD.FROM_WALLET, Hold.HOLD.STATUS), false)
 val IDX_CUSTOMER_IDENTITY_ISSUER_EXTERNAL_ID: Index = Internal.createIndex(DSL.name("idx_customer_identity_issuer_external_id"), CustomerIdentity.CUSTOMER_IDENTITY, arrayOf(CustomerIdentity.CUSTOMER_IDENTITY.ISSUER, CustomerIdentity.CUSTOMER_IDENTITY.EXTERNAL_ID), true)
 val TRANSFER_IDEMPOTENCY_KEY_IDX: Index = Internal.createIndex(DSL.name("transfer_idempotency_key_idx"), Transfer.TRANSFER, arrayOf(Transfer.TRANSFER.IDEMPOTENCY_KEY), true)
+val WALLET_OWNER_CUSTOMER_ID_IDX: Index = Internal.createIndex(DSL.name("wallet_owner_customer_id_idx"), WalletOwner.WALLET_OWNER, arrayOf(WalletOwner.WALLET_OWNER.CUSTOMER_ID), false)
+val WALLET_OWNER_SERVICE_ID_IDX: Index = Internal.createIndex(DSL.name("wallet_owner_service_id_idx"), WalletOwner.WALLET_OWNER, arrayOf(WalletOwner.WALLET_OWNER.SERVICE_ID), false)

@@ -6,6 +6,7 @@ import me.rcendrow.wallet.application.exception.NotFoundException
 import me.rcendrow.wallet.application.exception.WalletStatusException
 import me.rcendrow.wallet.domain.Hold
 import me.rcendrow.wallet.domain.HoldStatus
+import me.rcendrow.wallet.domain.HoldView
 import me.rcendrow.wallet.domain.Transfer
 import me.rcendrow.wallet.domain.wallet.WalletStatus
 import me.rcendrow.wallet.persistence.HoldRepository
@@ -27,25 +28,26 @@ class HoldService(
     @Transactional
     fun placeHold(
         customerId: UUID,
-        fromWallet: UUID,
-        toCustomerHandle: String,
+        fromWalletId: UUID,
+        toCustomerId: UUID,
         amount: BigDecimal,
         expiresAt: LocalDateTime,
     ): Hold {
-        val wallet = walletService.getCustomerWallet(customerId, fromWallet)
-        if (wallet.status != WalletStatus.ACTIVE) {
-            throw WalletStatusException(wallet.id, wallet.status)
+        val fromWallet = walletService.getCustomerWallet(customerId, fromWalletId)
+        if (fromWallet.status != WalletStatus.ACTIVE) {
+            throw WalletStatusException(fromWallet.id, fromWallet.status)
         }
-        walletService.lockAndVerifyBalance(wallet, amount)
+        walletService.lockAndVerifyBalance(fromWallet, amount)
 
-        val toCustomer = customerService.getCustomerByHandle(toCustomerHandle)
+        val toCustomer = customerService.getCustomer(toCustomerId)
         val toWallet = walletService.getCustomerWallet(toCustomer.id)
 
         val hold = Hold(
             id = Generators.timeBasedEpochRandomGenerator().generate(),
-            fromWallet = fromWallet,
+            fromWallet = fromWallet.id,
+            fromOwner = fromWallet.owner,
             toWallet = toWallet.id,
-            customerId = customerId,
+            toOwner = toWallet.owner,
             amount = amount,
             status = HoldStatus.ACTIVE,
             expiresAt = expiresAt,
@@ -55,8 +57,8 @@ class HoldService(
     }
 
     @Transactional
-    fun captureHold(customerId: UUID, holdId: UUID): Transfer {
-        val hold = findByCustomerIdAndId(customerId, holdId)
+    fun captureHold(ownerId: UUID, holdId: UUID): Transfer {
+        val hold = findByOwnerIdAndId(ownerId, holdId)
         when (hold.status) {
             HoldStatus.CAPTURED, HoldStatus.RELEASED -> throw HoldStatusException(hold)
             HoldStatus.ACTIVE -> if (hold.expiresAt < LocalDateTime.now()) {
@@ -65,7 +67,7 @@ class HoldService(
             }
         }
 
-        val from = walletService.getCustomerWallet(customerId, hold.fromWallet)
+        val from = walletService.getCustomerWallet(hold.fromWallet)
         val to = walletService.getCustomerWalletById(hold.toWallet)
         val transfer = transferService.createTransfer(
             fromWallet = from,
@@ -79,8 +81,8 @@ class HoldService(
     }
 
     @Transactional
-    fun releaseHold(customerId: UUID, holdId: UUID) {
-        val hold = findByCustomerIdAndId(customerId, holdId)
+    fun releaseHold(ownerId: UUID, holdId: UUID) {
+        val hold = findByOwnerIdAndId(ownerId, holdId)
 
         if (hold.status != HoldStatus.ACTIVE) {
             throw HoldStatusException(hold)
@@ -90,7 +92,10 @@ class HoldService(
     }
 
     @Transactional(readOnly = true)
-    fun getHold(customerId: UUID, holdId: UUID): Hold = findByCustomerIdAndId(customerId, holdId)
+    fun getHold(ownerId: UUID, holdId: UUID): HoldView {
+        return holdRepository.findByOwnerIdAndId(ownerId, holdId)
+            ?: throw NotFoundException("Hold", holdId)
+    }
 
     @Transactional
     @Scheduled(fixedRate = 60_000)
@@ -98,8 +103,8 @@ class HoldService(
         holdRepository.releaseExpiredActiveHolds()
     }
 
-    private fun findByCustomerIdAndId(customerId: UUID, id: UUID): Hold {
-        return holdRepository.findByCustomerIdAndId(customerId, id)
+    private fun findByOwnerIdAndId(customerId: UUID, id: UUID): Hold {
+        return holdRepository.findByOwnerIdAndId(customerId, id)
             ?: throw NotFoundException("Hold", id)
     }
 }
