@@ -34,10 +34,15 @@ class WalletService(
     }
 
     @Transactional(readOnly = true)
-    fun getCustomerWalletByCustomerHandle(handle: String): CustomerWallet {
-        val customer = customerService.getCustomerByHandle(handle)
-        return customerWalletRepository.findByCustomerId(customer.id)
-            ?: throw NotFoundException("Wallet for customer", customer.id)
+    fun getCustomerWallet(customerId: UUID): CustomerWallet {
+        return customerWalletRepository.findByCustomerId(customerId)
+            ?: throw NotFoundException("Wallet for customer", customerId)
+    }
+
+    @Transactional(readOnly = true)
+    fun getCustomerWalletById(walletId: UUID): CustomerWallet {
+        return customerWalletRepository.findById(walletId)
+            ?: throw NotFoundException("CustomerWallet", walletId)
     }
 
     @Transactional

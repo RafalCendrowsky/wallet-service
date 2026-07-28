@@ -9,7 +9,10 @@ import java.util.*
 
 data class CreateHoldRequest(
     @field:NotNull
-    val walletId: UUID?,
+    val fromWallet: UUID?,
+
+    @field:NotNull
+    val toCustomerHandle: String?,
 
     @field:NotNull
     @field:DecimalMin("0.01")

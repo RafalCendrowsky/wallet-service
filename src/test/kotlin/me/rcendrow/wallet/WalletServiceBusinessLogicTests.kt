@@ -772,14 +772,24 @@ class WalletServiceBusinessLogicTests {
     inner class HoldTests {
         @Test
         fun `should place and release hold`() {
-            val customer = createTestCustomer("hold-test")
+            val customer = createTestCustomer("hold-insufficient")
             val wallet = walletService.createCustomerWallet(customer.id)
+
+            val otherCustomer = createTestCustomer("hold-fail-other")
+            val otherWallet = walletService.createCustomerWallet(otherCustomer.id)
+
             transferService.createDeposit(customer.id, wallet.id, BigDecimal("100.00"), UUID.randomUUID().toString())
 
             val hold =
-                holdService.placeHold(customer.id, wallet.id, BigDecimal("30.00"), LocalDateTime.now().plusDays(1))
+                holdService.placeHold(
+                    customer.id,
+                    wallet.id,
+                    otherCustomer.handle,
+                    BigDecimal("30.00"),
+                    LocalDateTime.now().plusDays(1)
+                )
 
-            assertThat(hold.walletId).isEqualTo(wallet.id)
+            assertThat(hold.fromWallet).isEqualTo(wallet.id)
             assertThat(hold.amount).isEqualByComparingTo(BigDecimal("30.00"))
             assertThat(hold.status).isEqualTo(HoldStatus.ACTIVE)
 
@@ -787,7 +797,7 @@ class WalletServiceBusinessLogicTests {
             assertThat(balance.balance).isEqualByComparingTo(BigDecimal("100.00"))
             assertThat(balance.availableBalance).isEqualByComparingTo(BigDecimal("70.00"))
 
-            holdService.releaseHold(hold.id)
+            holdService.releaseHold(customer.id, hold.id)
 
             val releasedBalance = walletService.getBalance(customer.id, wallet.id)
             assertThat(releasedBalance.availableBalance).isEqualByComparingTo(BigDecimal("100.00"))
@@ -798,8 +808,18 @@ class WalletServiceBusinessLogicTests {
             val customer = createTestCustomer("hold-insufficient")
             val wallet = walletService.createCustomerWallet(customer.id)
 
+            val otherCustomer = createTestCustomer("hold-fail-other")
+            val otherWallet = walletService.createCustomerWallet(otherCustomer.id)
+
+
             assertThatThrownBy {
-                holdService.placeHold(customer.id, wallet.id, BigDecimal("30.00"), LocalDateTime.now().plusDays(1))
+                holdService.placeHold(
+                    customer.id,
+                    wallet.id,
+                    otherCustomer.handle,
+                    BigDecimal("30.00"),
+                    LocalDateTime.now().plusDays(1)
+                )
             }.isInstanceOf(InsufficientFundsException::class.java)
         }
 
@@ -807,10 +827,20 @@ class WalletServiceBusinessLogicTests {
         fun `should not change balance after failed hold`() {
             val customer = createTestCustomer("hold-fail")
             val wallet = walletService.createCustomerWallet(customer.id)
+
+            val otherCustomer = createTestCustomer("hold-fail-other")
+            val otherWallet = walletService.createCustomerWallet(otherCustomer.id)
+
             transferService.createDeposit(customer.id, wallet.id, BigDecimal("100.00"), UUID.randomUUID().toString())
 
             assertThatThrownBy {
-                holdService.placeHold(customer.id, wallet.id, BigDecimal("200.00"), LocalDateTime.now().plusDays(1))
+                holdService.placeHold(
+                    customer.id,
+                    wallet.id,
+                    otherCustomer.handle,
+                    BigDecimal("200.00"),
+                    LocalDateTime.now().plusDays(1)
+                )
             }.isInstanceOf(InsufficientFundsException::class.java)
 
             val balance = walletService.getBalance(customer.id, wallet.id)
@@ -834,11 +864,12 @@ class WalletServiceBusinessLogicTests {
             val hold = holdService.placeHold(
                 senderCustomer.id,
                 sender.id,
+                receiverCustomer.handle,
                 BigDecimal("50.00"),
                 LocalDateTime.now().plusDays(1)
             )
 
-            val transfer = holdService.captureHold(senderCustomer.id, hold.id, receiverCustomer.handle)
+            val transfer = holdService.captureHold(senderCustomer.id, hold.id)
             assertThat(transfer.amount).isEqualByComparingTo(BigDecimal("50.00"))
             assertThat(transfer.fromWallet).isEqualTo(sender.id)
             assertThat(transfer.toWallet).isEqualTo(receiver.id)
@@ -847,7 +878,10 @@ class WalletServiceBusinessLogicTests {
         @Test
         fun `should release expired holds`() {
             val senderCustomer = createTestCustomer("hold-capture-sender")
+            val receiverCustomer = createTestCustomer("hold-capture-receiver")
             val sender = walletService.createCustomerWallet(senderCustomer.id)
+            val receiver = walletService.createCustomerWallet(receiverCustomer.id)
+
             transferService.createDeposit(
                 senderCustomer.id,
                 sender.id,
@@ -859,6 +893,7 @@ class WalletServiceBusinessLogicTests {
                 holdService.placeHold(
                     senderCustomer.id,
                     sender.id,
+                    receiverCustomer.handle,
                     BigDecimal("50.00"),
 
                     LocalDateTime.now().minusDays(1)
@@ -869,6 +904,7 @@ class WalletServiceBusinessLogicTests {
                 holdService.placeHold(
                     senderCustomer.id,
                     sender.id,
+                    receiverCustomer.handle,
                     BigDecimal("50.00"),
 
                     LocalDateTime.now().plusDays(1)
@@ -877,7 +913,7 @@ class WalletServiceBusinessLogicTests {
 
             holdService.releaseExpiredHolds()
 
-            val holds = db.selectFrom(HOLD).where(HOLD.WALLET_ID.eq(sender.id)).fetchInto(Hold::class.java)
+            val holds = db.selectFrom(HOLD).where(HOLD.FROM_WALLET.eq(sender.id)).fetchInto(Hold::class.java)
 
             assertThat(holds.size).isEqualTo(10)
             assertThat(holds.count { it.status == HoldStatus.ACTIVE }).isEqualTo(5)
@@ -887,11 +923,14 @@ class WalletServiceBusinessLogicTests {
 
         @Test
         fun `should handle concurrent holds and transfers competing for same wallet`() {
-            val holderCustomer = createTestCustomer("compete-holder")
-            val wallet = walletService.createCustomerWallet(holderCustomer.id)
+            val senderCustomer = createTestCustomer("hold-capture-sender")
+            val receiverCustomer = createTestCustomer("hold-capture-receiver")
+            val sender = walletService.createCustomerWallet(senderCustomer.id)
+            val receiver = walletService.createCustomerWallet(receiverCustomer.id)
+
             transferService.createDeposit(
-                holderCustomer.id,
-                wallet.id,
+                senderCustomer.id,
+                sender.id,
                 BigDecimal("1000.00"),
                 UUID.randomUUID().toString()
             )
@@ -913,17 +952,18 @@ class WalletServiceBusinessLogicTests {
                         barrier.await()
                         if (i % 2 == 0) {
                             holdService.placeHold(
-                                holderCustomer.id,
-                                wallet.id,
+                                senderCustomer.id,
+                                sender.id,
+                                receiverCustomer.handle,
                                 BigDecimal("100.00"),
                                 LocalDateTime.now().plusDays(1)
                             )
                             "HOLD_SUCCESS"
                         } else {
                             transferService.createTransfer(
-                                fromCustomerId = holderCustomer.id,
-                                fromWallet = wallet.id,
-                                toCustomerHandle = receiverHandle!!,
+                                fromCustomerId = senderCustomer.id,
+                                fromWallet = sender.id,
+                                toCustomerHandle = receiverCustomer.handle,
                                 amount = BigDecimal("100.00"),
                                 idempotencyKey = UUID.randomUUID().toString()
                             )
@@ -946,7 +986,7 @@ class WalletServiceBusinessLogicTests {
             assertThat(totalSuccesses).isEqualTo(10)
             assertThat(totalFailures).isEqualTo(10)
 
-            val balance = walletService.getBalance(holderCustomer.id, wallet.id)
+            val balance = walletService.getBalance(senderCustomer.id, sender.id)
             assertThat(balance.availableBalance).isEqualByComparingTo(BigDecimal.ZERO)
             assertThat(balance.balance).isEqualByComparingTo(
                 BigDecimal("1000").subtract(BigDecimal("100").multiply(BigDecimal.valueOf(transferSuccesses.toLong())))

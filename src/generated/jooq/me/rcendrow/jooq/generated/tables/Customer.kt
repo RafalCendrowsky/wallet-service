@@ -15,8 +15,10 @@ import me.rcendrow.jooq.generated.keys.CUSTOMER_HANDLE_KEY
 import me.rcendrow.jooq.generated.keys.CUSTOMER_IDENTITY__CUSTOMER_IDENTITY_CUSTOMER_ID_FKEY
 import me.rcendrow.jooq.generated.keys.CUSTOMER_PKEY
 import me.rcendrow.jooq.generated.keys.CUSTOMER_WALLET__CUSTOMER_WALLET_CUSTOMER_ID_FKEY
+import me.rcendrow.jooq.generated.keys.HOLD__HOLD_CUSTOMER_ID_FKEY
 import me.rcendrow.jooq.generated.tables.CustomerIdentity.CustomerIdentityPath
 import me.rcendrow.jooq.generated.tables.CustomerWallet.CustomerWalletPath
+import me.rcendrow.jooq.generated.tables.Hold.HoldPath
 import me.rcendrow.jooq.generated.tables.records.CustomerRecord
 
 import org.jooq.Condition
@@ -160,6 +162,21 @@ open class Customer(
 
     val customerWallet: CustomerWalletPath
         get(): CustomerWalletPath = customerWallet()
+
+    private lateinit var _hold: HoldPath
+
+    /**
+     * Get the implicit to-many join path to the <code>public.hold</code> table
+     */
+    fun hold(): HoldPath {
+        if (!this::_hold.isInitialized)
+            _hold = HoldPath(this, null, HOLD__HOLD_CUSTOMER_ID_FKEY.inverseKey)
+
+        return _hold;
+    }
+
+    val hold: HoldPath
+        get(): HoldPath = hold()
     override fun `as`(alias: String): Customer = Customer(DSL.name(alias), this)
     override fun `as`(alias: Name): Customer = Customer(alias, this)
     override fun `as`(alias: Table<*>): Customer = Customer(alias.qualifiedName, this)

@@ -1,7 +1,6 @@
 package me.rcendrow.wallet.api
 
 import jakarta.validation.Valid
-import me.rcendrow.wallet.api.dto.CaptureHoldRequest
 import me.rcendrow.wallet.api.dto.CreateHoldRequest
 import me.rcendrow.wallet.api.dto.HoldResponse
 import me.rcendrow.wallet.api.dto.TransferResponse
@@ -26,10 +25,11 @@ class HoldController(
         @Valid @RequestBody request: CreateHoldRequest,
         @AuthenticationPrincipal principal: CustomerPrincipal,
     ): HoldResponse {
-        walletService.getCustomerWallet(principal.customerId, request.walletId!!)
+        walletService.getCustomerWallet(principal.customerId, request.fromWallet!!)
         val hold = holdService.placeHold(
             customerId = principal.customerId,
-            walletId = request.walletId,
+            fromWallet = request.fromWallet,
+            toCustomerHandle = request.toCustomerHandle!!,
             amount = request.amount!!,
             expiresAt = request.expiresAt!!,
         )
@@ -41,18 +41,17 @@ class HoldController(
         @PathVariable id: UUID,
         @AuthenticationPrincipal principal: CustomerPrincipal,
     ): HoldResponse {
-        val hold = holdService.getHold(id)
-        walletService.getCustomerWallet(principal.customerId, hold.walletId)
+        val hold = holdService.getHold(principal.customerId, id)
+        walletService.getCustomerWallet(principal.customerId, hold.fromWallet)
         return HoldResponse.from(hold)
     }
 
     @PostMapping("/{id}/capture")
     fun captureHold(
         @PathVariable id: UUID,
-        @Valid @RequestBody request: CaptureHoldRequest,
         @AuthenticationPrincipal principal: CustomerPrincipal,
     ): TransferResponse {
-        val transfer = holdService.captureHold(principal.customerId, id, request.toCustomerHandle!!)
+        val transfer = holdService.captureHold(principal.customerId, id)
         return TransferResponse.from(transfer)
     }
 
@@ -62,8 +61,8 @@ class HoldController(
         @PathVariable id: UUID,
         @AuthenticationPrincipal principal: CustomerPrincipal,
     ) {
-        val hold = holdService.getHold(id)
-        walletService.getCustomerWallet(principal.customerId, hold.walletId)
-        holdService.releaseHold(id)
+        val hold = holdService.getHold(principal.customerId, id)
+        walletService.getCustomerWallet(principal.customerId, hold.fromWallet)
+        holdService.releaseHold(principal.customerId, id)
     }
 }

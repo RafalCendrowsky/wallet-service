@@ -14,7 +14,10 @@ import kotlin.collections.List
 import me.rcendrow.jooq.generated.Public
 import me.rcendrow.jooq.generated.indexes.HOLD_WALLET_STATUS_IDX
 import me.rcendrow.jooq.generated.keys.HOLD_PKEY
+import me.rcendrow.jooq.generated.keys.HOLD__HOLD_CUSTOMER_ID_FKEY
+import me.rcendrow.jooq.generated.keys.HOLD__HOLD_TO_WALLET_FKEY
 import me.rcendrow.jooq.generated.keys.HOLD__HOLD_WALLET_ID_FKEY
+import me.rcendrow.jooq.generated.tables.Customer.CustomerPath
 import me.rcendrow.jooq.generated.tables.Wallet.WalletPath
 import me.rcendrow.jooq.generated.tables.records.HoldRecord
 
@@ -85,9 +88,9 @@ open class Hold(
     val ID: TableField<HoldRecord, UUID?> = createField(DSL.name("id"), SQLDataType.UUID.nullable(false).defaultValue(DSL.field(DSL.raw("uuidv7()"), SQLDataType.UUID)), this, "")
 
     /**
-     * The column <code>public.hold.wallet_id</code>.
+     * The column <code>public.hold.from_wallet</code>.
      */
-    val WALLET_ID: TableField<HoldRecord, UUID?> = createField(DSL.name("wallet_id"), SQLDataType.UUID.nullable(false), this, "")
+    val FROM_WALLET: TableField<HoldRecord, UUID?> = createField(DSL.name("from_wallet"), SQLDataType.UUID.nullable(false), this, "")
 
     /**
      * The column <code>public.hold.amount</code>.
@@ -108,6 +111,16 @@ open class Hold(
      * The column <code>public.hold.created_at</code>.
      */
     val CREATED_AT: TableField<HoldRecord, LocalDateTime?> = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "")
+
+    /**
+     * The column <code>public.hold.to_wallet</code>.
+     */
+    val TO_WALLET: TableField<HoldRecord, UUID?> = createField(DSL.name("to_wallet"), SQLDataType.UUID.nullable(false), this, "")
+
+    /**
+     * The column <code>public.hold.customer_id</code>.
+     */
+    val CUSTOMER_ID: TableField<HoldRecord, UUID?> = createField(DSL.name("customer_id"), SQLDataType.UUID.nullable(false), this, "")
 
     private constructor(alias: Name, aliased: Table<HoldRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<HoldRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
@@ -143,22 +156,54 @@ open class Hold(
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
     override fun getIndexes(): List<Index> = listOf(HOLD_WALLET_STATUS_IDX)
     override fun getPrimaryKey(): UniqueKey<HoldRecord> = HOLD_PKEY
-    override fun getReferences(): List<ForeignKey<HoldRecord, *>> = listOf(HOLD__HOLD_WALLET_ID_FKEY)
+    override fun getReferences(): List<ForeignKey<HoldRecord, *>> = listOf(HOLD__HOLD_CUSTOMER_ID_FKEY, HOLD__HOLD_TO_WALLET_FKEY, HOLD__HOLD_WALLET_ID_FKEY)
 
-    private lateinit var _wallet: WalletPath
+    private lateinit var _customer: CustomerPath
 
     /**
-     * Get the implicit join path to the <code>public.wallet</code> table.
+     * Get the implicit join path to the <code>public.customer</code> table.
      */
-    fun wallet(): WalletPath {
-        if (!this::_wallet.isInitialized)
-            _wallet = WalletPath(this, HOLD__HOLD_WALLET_ID_FKEY, null)
+    fun customer(): CustomerPath {
+        if (!this::_customer.isInitialized)
+            _customer = CustomerPath(this, HOLD__HOLD_CUSTOMER_ID_FKEY, null)
 
-        return _wallet;
+        return _customer;
     }
 
-    val wallet: WalletPath
-        get(): WalletPath = wallet()
+    val customer: CustomerPath
+        get(): CustomerPath = customer()
+
+    private lateinit var _holdToWalletFkey: WalletPath
+
+    /**
+     * Get the implicit join path to the <code>public.wallet</code> table, via
+     * the <code>hold_to_wallet_fkey</code> key.
+     */
+    fun holdToWalletFkey(): WalletPath {
+        if (!this::_holdToWalletFkey.isInitialized)
+            _holdToWalletFkey = WalletPath(this, HOLD__HOLD_TO_WALLET_FKEY, null)
+
+        return _holdToWalletFkey;
+    }
+
+    val holdToWalletFkey: WalletPath
+        get(): WalletPath = holdToWalletFkey()
+
+    private lateinit var _holdWalletIdFkey: WalletPath
+
+    /**
+     * Get the implicit join path to the <code>public.wallet</code> table, via
+     * the <code>hold_wallet_id_fkey</code> key.
+     */
+    fun holdWalletIdFkey(): WalletPath {
+        if (!this::_holdWalletIdFkey.isInitialized)
+            _holdWalletIdFkey = WalletPath(this, HOLD__HOLD_WALLET_ID_FKEY, null)
+
+        return _holdWalletIdFkey;
+    }
+
+    val holdWalletIdFkey: WalletPath
+        get(): WalletPath = holdWalletIdFkey()
     override fun `as`(alias: String): Hold = Hold(DSL.name(alias), this)
     override fun `as`(alias: Name): Hold = Hold(alias, this)
     override fun `as`(alias: Table<*>): Hold = Hold(alias.qualifiedName, this)

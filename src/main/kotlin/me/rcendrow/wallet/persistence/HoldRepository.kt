@@ -13,16 +13,17 @@ import java.util.*
 @Repository
 class HoldRepository(private val db: DSLContext) {
 
-    fun findById(id: UUID): Hold? {
+    fun findByCustomerIdAndId(customerId: UUID, id: UUID): Hold? {
         return db.selectFrom(HOLD)
             .where(HOLD.ID.eq(id))
+            .and(HOLD.CUSTOMER_ID.eq(customerId))
             .fetchSingleInto(Hold::class.java)
     }
 
     fun sumActiveAmount(walletId: UUID): BigDecimal {
         return db.select(DSL.coalesce(DSL.sum(HOLD.AMOUNT), BigDecimal.ZERO))
             .from(HOLD)
-            .where(HOLD.WALLET_ID.eq(walletId))
+            .where(HOLD.FROM_WALLET.eq(walletId))
             .and(HOLD.STATUS.eq(HoldStatus.ACTIVE.name))
             .fetchOneInto(BigDecimal::class.java)!!
     }
@@ -30,7 +31,9 @@ class HoldRepository(private val db: DSLContext) {
     fun create(hold: Hold): Hold {
         return db.insertInto(HOLD)
             .set(HOLD.ID, hold.id)
-            .set(HOLD.WALLET_ID, hold.walletId)
+            .set(HOLD.FROM_WALLET, hold.fromWallet)
+            .set(HOLD.TO_WALLET, hold.toWallet)
+            .set(HOLD.CUSTOMER_ID, hold.customerId)
             .set(HOLD.AMOUNT, hold.amount)
             .set(HOLD.STATUS, hold.status.name)
             .set(HOLD.EXPIRES_AT, hold.expiresAt)

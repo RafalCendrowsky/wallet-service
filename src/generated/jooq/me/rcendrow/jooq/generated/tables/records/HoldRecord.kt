@@ -24,7 +24,7 @@ open class HoldRecord() : UpdatableRecordImpl<HoldRecord>(Hold.HOLD) {
         set(value): Unit = set(0, value)
         get(): UUID? = get(0) as UUID?
 
-    open var walletId: UUID?
+    open var fromWallet: UUID?
         set(value): Unit = set(1, value)
         get(): UUID? = get(1) as UUID?
 
@@ -44,6 +44,14 @@ open class HoldRecord() : UpdatableRecordImpl<HoldRecord>(Hold.HOLD) {
         set(value): Unit = set(5, value)
         get(): LocalDateTime? = get(5) as LocalDateTime?
 
+    open var toWallet: UUID?
+        set(value): Unit = set(6, value)
+        get(): UUID? = get(6) as UUID?
+
+    open var customerId: UUID?
+        set(value): Unit = set(7, value)
+        get(): UUID? = get(7) as UUID?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -53,13 +61,15 @@ open class HoldRecord() : UpdatableRecordImpl<HoldRecord>(Hold.HOLD) {
     /**
      * Create a detached, initialised HoldRecord
      */
-    constructor(id: UUID? = null, walletId: UUID? = null, amount: BigDecimal? = null, status: String? = null, expiresAt: LocalDateTime? = null, createdAt: LocalDateTime? = null): this() {
+    constructor(id: UUID? = null, fromWallet: UUID? = null, amount: BigDecimal? = null, status: String? = null, expiresAt: LocalDateTime? = null, createdAt: LocalDateTime? = null, toWallet: UUID? = null, customerId: UUID? = null): this() {
         this.id = id
-        this.walletId = walletId
+        this.fromWallet = fromWallet
         this.amount = amount
         this.status = status
         this.expiresAt = expiresAt
         this.createdAt = createdAt
+        this.toWallet = toWallet
+        this.customerId = customerId
         resetChangedOnNotNull()
     }
 }

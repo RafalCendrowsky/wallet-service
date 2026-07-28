@@ -89,26 +89,41 @@ class WalletServiceTest {
     }
 
     @Test
-    fun `should return wallet by customer handle`() {
-        val handle = "alice"
+    fun `should return wallet by customer id`() {
         val customerId = UUID.randomUUID()
         val wallet = walletWithStatus(customerId, WalletStatus.ACTIVE)
-        every { customerService.getCustomerByHandle(handle) } returns Customer(id = customerId, handle = handle, createdAt = LocalDateTime.now())
         every { customerWalletRepository.findByCustomerId(customerId) } returns wallet
 
-        val result = service.getCustomerWalletByCustomerHandle(handle)
+        val result = service.getCustomerWallet(customerId)
 
         assertThat(result).isEqualTo(wallet)
     }
 
     @Test
-    fun `should throw NotFoundException when customer handle has no wallet`() {
-        val handle = "alice"
+    fun `should throw NotFoundException when customer has no wallet`() {
         val customerId = UUID.randomUUID()
-        every { customerService.getCustomerByHandle(handle) } returns Customer(id = customerId, handle = handle, createdAt = LocalDateTime.now())
         every { customerWalletRepository.findByCustomerId(customerId) } returns null
 
-        assertThatThrownBy { service.getCustomerWalletByCustomerHandle(handle) }
+        assertThatThrownBy { service.getCustomerWallet(customerId) }
+            .isInstanceOf(NotFoundException::class.java)
+    }
+
+    @Test
+    fun `should return wallet by wallet id`() {
+        val wallet = walletWithStatus(UUID.randomUUID(), WalletStatus.ACTIVE)
+        every { customerWalletRepository.findById(wallet.id) } returns wallet
+
+        val result = service.getCustomerWalletById(wallet.id)
+
+        assertThat(result).isEqualTo(wallet)
+    }
+
+    @Test
+    fun `should throw NotFoundException for unknown wallet id`() {
+        val walletId = UUID.randomUUID()
+        every { customerWalletRepository.findById(walletId) } returns null
+
+        assertThatThrownBy { service.getCustomerWalletById(walletId) }
             .isInstanceOf(NotFoundException::class.java)
     }
 

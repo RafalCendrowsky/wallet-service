@@ -11,6 +11,7 @@ import kotlin.collections.Collection
 
 import me.rcendrow.jooq.generated.Public
 import me.rcendrow.jooq.generated.keys.CUSTOMER_WALLET__CUSTOMER_WALLET_WALLET_ID_FKEY
+import me.rcendrow.jooq.generated.keys.HOLD__HOLD_TO_WALLET_FKEY
 import me.rcendrow.jooq.generated.keys.HOLD__HOLD_WALLET_ID_FKEY
 import me.rcendrow.jooq.generated.keys.LEDGER_ENTRY__LEDGER_ENTRY_WALLET_ID_FKEY
 import me.rcendrow.jooq.generated.keys.SERVICE_WALLET__SERVICE_WALLET_WALLET_ID_FKEY
@@ -158,20 +159,37 @@ open class Wallet(
     val customerWallet: CustomerWalletPath
         get(): CustomerWalletPath = customerWallet()
 
-    private lateinit var _hold: HoldPath
+    private lateinit var _holdToWalletFkey: HoldPath
 
     /**
-     * Get the implicit to-many join path to the <code>public.hold</code> table
+     * Get the implicit to-many join path to the <code>public.hold</code> table,
+     * via the <code>hold_to_wallet_fkey</code> key
      */
-    fun hold(): HoldPath {
-        if (!this::_hold.isInitialized)
-            _hold = HoldPath(this, null, HOLD__HOLD_WALLET_ID_FKEY.inverseKey)
+    fun holdToWalletFkey(): HoldPath {
+        if (!this::_holdToWalletFkey.isInitialized)
+            _holdToWalletFkey = HoldPath(this, null, HOLD__HOLD_TO_WALLET_FKEY.inverseKey)
 
-        return _hold;
+        return _holdToWalletFkey;
     }
 
-    val hold: HoldPath
-        get(): HoldPath = hold()
+    val holdToWalletFkey: HoldPath
+        get(): HoldPath = holdToWalletFkey()
+
+    private lateinit var _holdWalletIdFkey: HoldPath
+
+    /**
+     * Get the implicit to-many join path to the <code>public.hold</code> table,
+     * via the <code>hold_wallet_id_fkey</code> key
+     */
+    fun holdWalletIdFkey(): HoldPath {
+        if (!this::_holdWalletIdFkey.isInitialized)
+            _holdWalletIdFkey = HoldPath(this, null, HOLD__HOLD_WALLET_ID_FKEY.inverseKey)
+
+        return _holdWalletIdFkey;
+    }
+
+    val holdWalletIdFkey: HoldPath
+        get(): HoldPath = holdWalletIdFkey()
 
     private lateinit var _ledgerEntry: LedgerEntryPath
 

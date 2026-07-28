@@ -22,6 +22,7 @@ class TransferService(
     private val walletService: WalletService,
     private val ledgerService: LedgerService,
     private val walletBalanceService: WalletBalanceService,
+    private val customerService: CustomerService,
 ) {
 
     @Transactional
@@ -56,8 +57,9 @@ class TransferService(
         amount: BigDecimal,
         idempotencyKey: String,
     ): Transfer {
+        val toCustomer = customerService.getCustomerByHandle(toCustomerHandle)
+        val to = walletService.getCustomerWallet(toCustomer.id)
         val from = walletService.getCustomerWallet(fromCustomerId, fromWallet)
-        val to = walletService.getCustomerWalletByCustomerHandle(toCustomerHandle)
         return createTransfer(
             fromWallet = from,
             toWallet = to,
@@ -66,7 +68,7 @@ class TransferService(
         )
     }
 
-    private fun createTransfer(
+    internal fun createTransfer(
         fromWallet: Wallet,
         toWallet: Wallet,
         amount: BigDecimal,

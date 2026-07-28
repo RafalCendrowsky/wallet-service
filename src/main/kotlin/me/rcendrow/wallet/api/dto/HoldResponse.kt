@@ -8,7 +8,8 @@ import java.util.*
 
 data class HoldResponse(
     val id: UUID,
-    val walletId: UUID,
+    val fromWallet: UUID,
+    val toWallet: UUID,
     val amount: BigDecimal,
     val status: HoldStatus,
     val expiresAt: LocalDateTime,
@@ -17,7 +18,8 @@ data class HoldResponse(
     companion object {
         fun from(hold: Hold) = HoldResponse(
             id = hold.id,
-            walletId = hold.walletId,
+            fromWallet = hold.fromWallet,
+            toWallet = hold.toWallet,
             amount = hold.amount,
             status = hold.status,
             expiresAt = hold.expiresAt,

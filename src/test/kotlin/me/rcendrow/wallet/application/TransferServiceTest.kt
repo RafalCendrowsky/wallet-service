@@ -6,6 +6,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import me.rcendrow.wallet.application.exception.DuplicateIdempotencyKeyException
 import me.rcendrow.wallet.application.exception.InsufficientFundsException
+import me.rcendrow.wallet.domain.Customer
 import me.rcendrow.wallet.domain.Transfer
 import me.rcendrow.wallet.domain.wallet.CustomerWallet
 import me.rcendrow.wallet.domain.wallet.ServiceWallet
@@ -29,16 +30,18 @@ class TransferServiceTest {
     private val walletService: WalletService = mockk()
     private val ledgerService: LedgerService = mockk()
     private val walletBalanceService: WalletBalanceService = mockk()
+    private val customerService: CustomerService = mockk()
     private val service = TransferService(
         transferRepository,
         walletService,
         ledgerService,
-        walletBalanceService
+        walletBalanceService,
+        customerService,
     )
 
     @AfterEach
     fun tearDown() {
-        clearMocks(transferRepository, walletService, ledgerService, walletBalanceService)
+        clearMocks(transferRepository, walletService, ledgerService, walletBalanceService, customerService)
     }
 
     private fun activeWallet(id: UUID, customerId: UUID = UUID.randomUUID()) = CustomerWallet(
@@ -50,8 +53,10 @@ class TransferServiceTest {
         val customerId = UUID.randomUUID()
         val fromId = UUID.randomUUID()
         val toHandle = "recipient"
+        val toCustomerId = UUID.randomUUID()
         every { walletService.getCustomerWallet(customerId, fromId) } returns activeWallet(fromId, customerId)
-        every { walletService.getCustomerWalletByCustomerHandle(toHandle) } returns activeWallet(UUID.randomUUID())
+        every { customerService.getCustomerByHandle(toHandle) } returns Customer(toCustomerId, toHandle, LocalDateTime.now())
+        every { walletService.getCustomerWallet(toCustomerId) } returns activeWallet(UUID.randomUUID(), toCustomerId)
 
         assertThatThrownBy {
             service.createTransfer(
@@ -70,8 +75,10 @@ class TransferServiceTest {
         val customerId = UUID.randomUUID()
         val fromId = UUID.randomUUID()
         val toHandle = "recipient"
+        val toCustomerId = UUID.randomUUID()
         every { walletService.getCustomerWallet(customerId, fromId) } returns activeWallet(fromId, customerId)
-        every { walletService.getCustomerWalletByCustomerHandle(toHandle) } returns activeWallet(UUID.randomUUID())
+        every { customerService.getCustomerByHandle(toHandle) } returns Customer(toCustomerId, toHandle, LocalDateTime.now())
+        every { walletService.getCustomerWallet(toCustomerId) } returns activeWallet(UUID.randomUUID(), toCustomerId)
 
         assertThatThrownBy {
             service.createTransfer(
@@ -91,11 +98,13 @@ class TransferServiceTest {
         val fromId = UUID.randomUUID()
         val toId = UUID.randomUUID()
         val toHandle = "recipient"
+        val toCustomerId = UUID.randomUUID()
         val key = UUID.randomUUID().toString()
         val from = activeWallet(fromId, customerId)
-        val to = activeWallet(toId)
+        val to = activeWallet(toId, toCustomerId)
         every { walletService.getCustomerWallet(customerId, fromId) } returns from
-        every { walletService.getCustomerWalletByCustomerHandle(toHandle) } returns to
+        every { customerService.getCustomerByHandle(toHandle) } returns Customer(toCustomerId, toHandle, LocalDateTime.now())
+        every { walletService.getCustomerWallet(toCustomerId) } returns to
         every { transferRepository.findByIdempotencyKey(key) } returns null
         every { walletService.lockAndVerifyBalance(from, BigDecimal("50.00")) } returns Unit
         every { transferRepository.create(any()) } answers { firstArg() }
@@ -119,9 +128,11 @@ class TransferServiceTest {
         val customerId = UUID.randomUUID()
         val fromId = UUID.randomUUID()
         val toHandle = "recipient"
+        val toCustomerId = UUID.randomUUID()
         val from = activeWallet(fromId, customerId)
         every { walletService.getCustomerWallet(customerId, fromId) } returns from
-        every { walletService.getCustomerWalletByCustomerHandle(toHandle) } returns activeWallet(UUID.randomUUID())
+        every { customerService.getCustomerByHandle(toHandle) } returns Customer(toCustomerId, toHandle, LocalDateTime.now())
+        every { walletService.getCustomerWallet(toCustomerId) } returns activeWallet(UUID.randomUUID(), toCustomerId)
         every { transferRepository.findByIdempotencyKey(any()) } returns null
         every { walletService.lockAndVerifyBalance(from, BigDecimal("50.00")) } throws
                 InsufficientFundsException(fromId, BigDecimal("30.00"), BigDecimal("50.00"))
@@ -136,10 +147,12 @@ class TransferServiceTest {
         val customerId = UUID.randomUUID()
         val fromId = UUID.randomUUID()
         val toHandle = "recipient"
+        val toCustomerId = UUID.randomUUID()
         val key = UUID.randomUUID().toString()
         val existing = mockk<Transfer>()
         every { walletService.getCustomerWallet(customerId, fromId) } returns activeWallet(fromId, customerId)
-        every { walletService.getCustomerWalletByCustomerHandle(toHandle) } returns activeWallet(UUID.randomUUID())
+        every { customerService.getCustomerByHandle(toHandle) } returns Customer(toCustomerId, toHandle, LocalDateTime.now())
+        every { walletService.getCustomerWallet(toCustomerId) } returns activeWallet(UUID.randomUUID(), toCustomerId)
         every { transferRepository.findByIdempotencyKey(key) } returns existing
 
         val result = service.createTransfer(customerId, fromId, toHandle, BigDecimal("50.00"), key)
@@ -153,11 +166,13 @@ class TransferServiceTest {
         val customerId = UUID.randomUUID()
         val fromId = UUID.randomUUID()
         val toHandle = "recipient"
+        val toCustomerId = UUID.randomUUID()
         val key = UUID.randomUUID().toString()
         val existing = mockk<Transfer>()
         val from = activeWallet(fromId, customerId)
         every { walletService.getCustomerWallet(customerId, fromId) } returns from
-        every { walletService.getCustomerWalletByCustomerHandle(toHandle) } returns activeWallet(UUID.randomUUID())
+        every { customerService.getCustomerByHandle(toHandle) } returns Customer(toCustomerId, toHandle, LocalDateTime.now())
+        every { walletService.getCustomerWallet(toCustomerId) } returns activeWallet(UUID.randomUUID(), toCustomerId)
         every { transferRepository.findByIdempotencyKey(key) } returns null
         every { walletService.lockAndVerifyBalance(from, BigDecimal("50.00")) } returns Unit
         every { transferRepository.create(any()) } throws DuplicateIdempotencyKeyException(key, existing)
@@ -174,7 +189,8 @@ class TransferServiceTest {
         val walletId = UUID.randomUUID()
         val wallet = activeWallet(walletId, customerId)
         every { walletService.getCustomerWallet(customerId, walletId) } returns wallet
-        every { walletService.getCustomerWalletByCustomerHandle("self") } returns wallet
+        every { customerService.getCustomerByHandle("self") } returns Customer(customerId, "self", LocalDateTime.now())
+        every { walletService.getCustomerWallet(customerId) } returns wallet
 
         assertThatThrownBy {
             service.createTransfer(
