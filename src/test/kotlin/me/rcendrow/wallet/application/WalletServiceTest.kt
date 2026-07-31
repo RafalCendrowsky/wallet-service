@@ -12,7 +12,7 @@ import me.rcendrow.wallet.domain.wallet.Wallet
 import me.rcendrow.wallet.domain.wallet.WalletBalance
 import me.rcendrow.wallet.domain.wallet.WalletOwner
 import me.rcendrow.wallet.domain.wallet.WalletStatus
-import me.rcendrow.wallet.persistence.ServiceRepository
+import me.rcendrow.wallet.persistence.ServiceAccountRepository
 import me.rcendrow.wallet.persistence.wallet.WalletBalanceRepository
 import me.rcendrow.wallet.persistence.wallet.WalletRepository
 import org.assertj.core.api.Assertions.assertThat
@@ -29,14 +29,14 @@ class WalletServiceTest {
     private val walletRepository: WalletRepository = mockk()
     private val walletBalanceService: WalletBalanceService = mockk()
     private val walletBalanceRepository: WalletBalanceRepository = mockk()
-    private val serviceRepository: ServiceRepository = mockk()
+    private val serviceAccountRepository: ServiceAccountRepository = mockk()
     private val service =
         WalletService(
             customerService,
             walletBalanceService,
             walletRepository,
             walletBalanceRepository,
-            serviceRepository,
+            serviceAccountRepository,
         )
 
     @AfterEach

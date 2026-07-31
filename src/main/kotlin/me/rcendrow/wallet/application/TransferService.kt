@@ -38,18 +38,6 @@ class TransferService(
     }
 
     @Transactional
-    fun createWithdrawal(customerId: UUID, walletId: UUID, amount: BigDecimal, idempotencyKey: String): Transfer {
-        val wallet = walletService.getCustomerWallet(customerId, walletId)
-        val systemWallet = walletService.getServiceWalletByRole(ServiceRole.EXTERNAL_SETTLEMENT)
-        return createTransfer(
-            fromWallet = wallet,
-            toWallet = systemWallet,
-            amount = amount,
-            idempotencyKey = idempotencyKey,
-        )
-    }
-
-    @Transactional
     fun createTransfer(
         fromCustomerId: UUID,
         fromWallet: UUID,

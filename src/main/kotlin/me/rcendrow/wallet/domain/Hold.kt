@@ -1,12 +1,13 @@
 package me.rcendrow.wallet.domain
 
+import com.fasterxml.uuid.Generators
 import me.rcendrow.wallet.domain.wallet.WalletOwner
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.*
 
 data class Hold(
-    val id: UUID,
+    val id: UUID = Generators.timeBasedEpochRandomGenerator().generate(),
     val fromWallet: UUID,
     val fromOwner: WalletOwner?,
     val toWallet: UUID,
@@ -14,7 +15,7 @@ data class Hold(
     val amount: BigDecimal,
     val status: HoldStatus,
     val expiresAt: LocalDateTime,
-    val createdAt: LocalDateTime,
+    val createdAt: LocalDateTime = LocalDateTime.now(),
 ) {
     companion object {
         fun from(

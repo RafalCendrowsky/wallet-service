@@ -6,8 +6,8 @@ import me.rcendrow.wallet.application.exception.NotFoundException
 import me.rcendrow.wallet.application.exception.WalletStatusException
 import me.rcendrow.wallet.domain.Hold
 import me.rcendrow.wallet.domain.HoldStatus
-
 import me.rcendrow.wallet.domain.Transfer
+import me.rcendrow.wallet.domain.wallet.Wallet
 import me.rcendrow.wallet.domain.wallet.WalletStatus
 import me.rcendrow.wallet.persistence.HoldRepository
 import org.springframework.scheduling.annotation.Scheduled
@@ -27,20 +27,15 @@ class HoldService(
 
     @Transactional
     fun placeHold(
-        customerId: UUID,
-        fromWalletId: UUID,
-        toCustomerId: UUID,
+        fromWallet: Wallet,
+        toWallet: Wallet,
         amount: BigDecimal,
         expiresAt: LocalDateTime,
     ): Hold {
-        val fromWallet = walletService.getCustomerWallet(customerId, fromWalletId)
         if (fromWallet.status != WalletStatus.ACTIVE) {
             throw WalletStatusException(fromWallet.id, fromWallet.status)
         }
         walletService.lockAndVerifyBalance(fromWallet, amount)
-
-        val toCustomer = customerService.getCustomer(toCustomerId)
-        val toWallet = walletService.getCustomerWallet(toCustomer.id)
 
         val hold = Hold(
             id = Generators.timeBasedEpochRandomGenerator().generate(),
@@ -54,6 +49,20 @@ class HoldService(
             createdAt = LocalDateTime.now(),
         )
         return holdRepository.create(hold)
+    }
+
+    @Transactional
+    fun placeHold(
+        customerId: UUID,
+        fromWalletId: UUID,
+        toCustomerId: UUID,
+        amount: BigDecimal,
+        expiresAt: LocalDateTime,
+    ): Hold {
+        val fromWallet = walletService.getCustomerWallet(customerId, fromWalletId)
+        val toCustomer = customerService.getCustomer(toCustomerId)
+        val toWallet = walletService.getCustomerWallet(toCustomer.id)
+        return placeHold(fromWallet, toWallet, amount, expiresAt)
     }
 
     @Transactional

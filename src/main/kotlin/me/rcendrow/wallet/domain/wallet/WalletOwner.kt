@@ -1,7 +1,7 @@
 package me.rcendrow.wallet.domain.wallet
 
 import me.rcendrow.wallet.domain.Customer
-import me.rcendrow.wallet.domain.Service
+import me.rcendrow.wallet.domain.ServiceAccount
 import java.util.*
 
 data class WalletOwner(
@@ -18,10 +18,10 @@ data class WalletOwner(
             type = WalletOwnerType.CUSTOMER
         )
 
-        fun from(service: Service) = WalletOwner(
-            id = service.id,
-            displayName = service.displayName,
-            label = service.role.name,
+        fun from(serviceAccount: ServiceAccount) = WalletOwner(
+            id = serviceAccount.id,
+            displayName = serviceAccount.displayName,
+            label = serviceAccount.role.name,
             type = WalletOwnerType.SERVICE
         )
 

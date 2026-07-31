@@ -1,10 +1,12 @@
 package me.rcendrow.wallet.api
 
+import jakarta.validation.Valid
 import me.rcendrow.wallet.api.dto.*
 import me.rcendrow.wallet.application.TransferService
 import me.rcendrow.wallet.application.WalletService
 import me.rcendrow.wallet.domain.CustomerPrincipal
 import me.rcendrow.wallet.domain.wallet.WalletStatus
+import me.rcendrow.wallet.persistence.TransactionService
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -16,6 +18,7 @@ import java.util.*
 class WalletController(
     private val walletService: WalletService,
     private val transferService: TransferService,
+    private val transactionService: TransactionService,
 ) {
 
     @PostMapping
@@ -59,6 +62,17 @@ class WalletController(
         val pageable = PageRequest.of(page, size)
         val transfers = transferService.getWalletTransfers(principal.customerId, id, pageable)
         return transfers.map { TransferResponse.from(it) }.toResponse()
+    }
+
+    @PostMapping("/{id}/withdraw")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun withdraw(
+        @PathVariable id: UUID,
+        @Valid @RequestBody request: CreateWithdrawalRequest,
+        @AuthenticationPrincipal principal: CustomerPrincipal
+    ): HoldResponse {
+        val hold = transactionService.initiateWithdrawal(principal.customerId, id, request.amount!!)
+        return HoldResponse.from(hold)
     }
 
     @PutMapping("/{id}/status")

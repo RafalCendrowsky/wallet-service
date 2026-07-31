@@ -78,15 +78,19 @@ class HoldServiceTest {
     @Test
     fun `should reject hold for non-active wallet`() {
         val customerId = UUID.randomUUID()
-        val fromWallet = UUID.randomUUID()
-        val wallet = walletWithOwner(fromWallet, customerId, WalletStatus.SUSPENDED)
-        every { walletService.getCustomerWallet(customerId, fromWallet) } returns wallet
+        val fromWalletId = UUID.randomUUID()
+        val toCustomerId = UUID.randomUUID()
+        val toWalletId = UUID.randomUUID()
+        val wallet = walletWithOwner(fromWalletId, customerId, WalletStatus.SUSPENDED)
+        every { walletService.getCustomerWallet(customerId, fromWalletId) } returns wallet
+        every { customerService.getCustomer(toCustomerId) } returns Customer(toCustomerId, "other", "Other", LocalDateTime.now())
+        every { walletService.getCustomerWallet(toCustomerId) } returns walletWithOwner(toWalletId, toCustomerId)
 
         assertThatThrownBy {
             service.placeHold(
                 customerId,
-                fromWallet,
-                UUID.randomUUID(),
+                fromWalletId,
+                toCustomerId,
                 BigDecimal("30.00"),
                 LocalDateTime.now().plusDays(1)
             )
@@ -96,21 +100,45 @@ class HoldServiceTest {
     @Test
     fun `should reject hold when available balance insufficient`() {
         val customerId = UUID.randomUUID()
-        val fromWallet = UUID.randomUUID()
-        val wallet = walletWithOwner(fromWallet, customerId)
-        every { walletService.getCustomerWallet(customerId, fromWallet) } returns wallet
+        val fromWalletId = UUID.randomUUID()
+        val toCustomerId = UUID.randomUUID()
+        val toWalletId = UUID.randomUUID()
+        val wallet = walletWithOwner(fromWalletId, customerId)
+        every { walletService.getCustomerWallet(customerId, fromWalletId) } returns wallet
+        every { customerService.getCustomer(toCustomerId) } returns Customer(toCustomerId, "other", "Other", LocalDateTime.now())
+        every { walletService.getCustomerWallet(toCustomerId) } returns walletWithOwner(toWalletId, toCustomerId)
         every { walletService.lockAndVerifyBalance(wallet, BigDecimal("30.00")) } throws
-                InsufficientFundsException(fromWallet, BigDecimal("20.00"), BigDecimal("30.00"))
+                InsufficientFundsException(fromWalletId, BigDecimal("20.00"), BigDecimal("30.00"))
 
         assertThatThrownBy {
             service.placeHold(
                 customerId,
-                fromWallet,
-                UUID.randomUUID(),
+                fromWalletId,
+                toCustomerId,
                 BigDecimal("30.00"),
                 LocalDateTime.now().plusDays(1)
             )
         }.isInstanceOf(InsufficientFundsException::class.java)
+    }
+
+    @Test
+    fun `should place hold using wallet-based method`() {
+        val fromWalletId = UUID.randomUUID()
+        val toWalletId = UUID.randomUUID()
+        val expiresAt = LocalDateTime.now().plusDays(1)
+        val sender = walletWithOwner(fromWalletId, UUID.randomUUID())
+        val receiver = walletWithOwner(toWalletId, UUID.randomUUID())
+        every { walletService.lockAndVerifyBalance(sender, BigDecimal("30.00")) } returns Unit
+        every { holdRepository.create(any()) } answers { firstArg() }
+
+        val result = service.placeHold(sender, receiver, BigDecimal("30.00"), expiresAt)
+
+        assertThat(result.fromWallet).isEqualTo(fromWalletId)
+        assertThat(result.toWallet).isEqualTo(toWalletId)
+        assertThat(result.amount).isEqualByComparingTo(BigDecimal("30.00"))
+        assertThat(result.status).isEqualTo(HoldStatus.ACTIVE)
+        assertThat(result.expiresAt).isEqualTo(expiresAt)
+        verify { holdRepository.create(result) }
     }
 
     @Test

@@ -8,14 +8,15 @@ import me.rcendrow.jooq.generated.tables.WalletBalanceQueue.Companion.WALLET_BAL
 import me.rcendrow.jooq.generated.tables.references.CUSTOMER
 import me.rcendrow.jooq.generated.tables.references.HOLD
 import me.rcendrow.jooq.generated.tables.references.SERVICE_ACCOUNT
-import me.rcendrow.jooq.generated.tables.references.WALLET_OWNER
 import me.rcendrow.wallet.application.*
 import me.rcendrow.wallet.application.exception.InsufficientFundsException
 import me.rcendrow.wallet.application.exception.NotFoundException
 import me.rcendrow.wallet.domain.Customer
 import me.rcendrow.wallet.domain.HoldStatus
+import me.rcendrow.wallet.domain.ServiceAccount
 import me.rcendrow.wallet.domain.wallet.ServiceRole
 import me.rcendrow.wallet.domain.wallet.WalletStatus
+import me.rcendrow.wallet.persistence.ServiceAccountRepository
 import me.rcendrow.wallet.persistence.wallet.WalletBalanceQueueRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -65,6 +66,9 @@ class WalletServiceBusinessLogicTests {
     @Autowired
     private lateinit var walletBalanceQueueRepository: WalletBalanceQueueRepository
 
+    @Autowired
+    private lateinit var serviceAccountRepository: ServiceAccountRepository
+
     private val testIssuer = "https://test-issuer.example.com"
 
     private fun createTestCustomer(handle: String, externalId: String = "ext-$handle"): Customer =
@@ -74,27 +78,15 @@ class WalletServiceBusinessLogicTests {
     fun clearDatabase() {
         txTemplate.execute {
             db.truncate(CUSTOMER, WALLET, SERVICE_ACCOUNT).cascade().execute()
-            val walletId = UUID.randomUUID()
-            db.insertInto(WALLET)
-                .set(WALLET.ID, walletId)
-                .set(WALLET.STATUS, "ACTIVE")
-                .set(WALLET.CREATED_AT, LocalDateTime.now())
-                .execute()
-            val serviceAccountId = UUID.randomUUID()
-            db.insertInto(SERVICE_ACCOUNT)
-                .set(SERVICE_ACCOUNT.ID, serviceAccountId)
-                .set(SERVICE_ACCOUNT.ROLE, ServiceRole.EXTERNAL_SETTLEMENT.name)
-                .set(SERVICE_ACCOUNT.DISPLAY_NAME, "External Settlement")
-                .execute()
-            db.insertInto(WALLET_OWNER)
-                .set(WALLET_OWNER.WALLET_ID, walletId)
-                .set(WALLET_OWNER.SERVICE_ID, serviceAccountId)
-                .execute()
-            db.insertInto(WALLET_BALANCE)
-                .set(WALLET_BALANCE.WALLET_ID, walletId)
-                .set(WALLET_BALANCE.BALANCE, BigDecimal.ZERO)
-                .execute()
         }
+        val account = serviceAccountRepository.create(
+            ServiceAccount(
+                UUID.randomUUID(),
+                ServiceRole.EXTERNAL_SETTLEMENT,
+                "External Settlement",
+            )
+        )
+        walletService.createServiceWallet(account)
     }
 
     @Nested
@@ -393,21 +385,30 @@ class WalletServiceBusinessLogicTests {
         }
 
         @Test
-        fun `should withdraw money and update balance`() {
-            val customer = createTestCustomer("withdraw-test")
+        fun `should hold and capture withdrawal`() {
+            val customer = createTestCustomer("withdraw-hold-test")
             val wallet = walletService.createCustomerWallet(customer.id)
             transferService.createDeposit(customer.id, wallet.id, BigDecimal("100.00"), UUID.randomUUID().toString())
 
-            val transfer =
-                transferService.createWithdrawal(
-                    customer.id,
-                    wallet.id,
-                    BigDecimal("40.00"),
-                    UUID.randomUUID().toString()
-                )
+            val serviceWallet = walletService.getServiceWalletByRole(ServiceRole.EXTERNAL_SETTLEMENT)
 
-            val balance = walletService.getBalance(customer.id, wallet.id)
+            val hold = holdService.placeHold(
+                wallet,
+                serviceWallet,
+                BigDecimal("40.00"),
+                LocalDateTime.now().plusDays(14)
+            )
+
+            var balance = walletService.getBalance(customer.id, wallet.id)
+            assertThat(balance.balance).isEqualByComparingTo(BigDecimal("100.00"))
+            assertThat(balance.availableBalance).isEqualByComparingTo(BigDecimal("60.00"))
+
+            val transfer = holdService.captureHold(serviceWallet.owner.id, hold.id)
+            assertThat(transfer.amount).isEqualByComparingTo(BigDecimal("40.00"))
+
+            balance = walletService.getBalance(customer.id, wallet.id)
             assertThat(balance.balance).isEqualByComparingTo(BigDecimal("60.00"))
+            assertThat(balance.availableBalance).isEqualByComparingTo(BigDecimal("60.00"))
 
             val debitCount = db.fetchCount(
                 LEDGER_ENTRY,
@@ -420,7 +421,6 @@ class WalletServiceBusinessLogicTests {
             val entriesSum = db.select(DSL.sum(LEDGER_ENTRY.AMOUNT)).from(LEDGER_ENTRY).where(
                 LEDGER_ENTRY.TRANSFER_ID.eq(transfer.id)
             ).fetchOne(0, BigDecimal::class.java)
-
 
             assertThat(debitCount).isEqualTo(1)
             assertThat(creditCount).isEqualTo(1)

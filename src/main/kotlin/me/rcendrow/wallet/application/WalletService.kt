@@ -3,8 +3,9 @@ package me.rcendrow.wallet.application
 import com.fasterxml.uuid.Generators
 import me.rcendrow.wallet.application.exception.InsufficientFundsException
 import me.rcendrow.wallet.application.exception.NotFoundException
+import me.rcendrow.wallet.domain.ServiceAccount
 import me.rcendrow.wallet.domain.wallet.*
-import me.rcendrow.wallet.persistence.ServiceRepository
+import me.rcendrow.wallet.persistence.ServiceAccountRepository
 import me.rcendrow.wallet.persistence.wallet.WalletBalanceRepository
 import me.rcendrow.wallet.persistence.wallet.WalletRepository
 import org.springframework.stereotype.Service
@@ -19,7 +20,7 @@ class WalletService(
     private val walletBalanceService: WalletBalanceService,
     private val walletRepository: WalletRepository,
     private val walletBalanceRepository: WalletBalanceRepository,
-    private val serviceRepository: ServiceRepository,
+    private val serviceAccountRepository: ServiceAccountRepository,
 ) {
     @Transactional(readOnly = true)
     fun findWalletsByCustomer(customerId: UUID): List<Wallet> {
@@ -65,6 +66,19 @@ class WalletService(
     }
 
     @Transactional
+    fun createServiceWallet(serviceAccount: ServiceAccount): Wallet {
+        val wallet = Wallet(
+            id = Generators.timeBasedEpochRandomGenerator().generate(),
+            owner = WalletOwner.from(serviceAccount),
+            status = WalletStatus.ACTIVE,
+            createdAt = LocalDateTime.now(),
+        )
+        return walletRepository.create(wallet).also {
+            walletBalanceRepository.create(it.id)
+        }
+    }
+
+    @Transactional
     fun lockAndVerifyBalance(wallet: Wallet, amount: BigDecimal) {
         walletRepository.lockWallet(wallet.id)
         val balance = walletBalanceService.findBalance(wallet.id)
@@ -95,7 +109,7 @@ class WalletService(
 
     @Transactional(readOnly = true)
     fun getServiceWalletByRole(role: ServiceRole): Wallet {
-        val service = serviceRepository.findByServiceRole(role) ?: throw NotFoundException("Service", role.name)
+        val service = serviceAccountRepository.findByServiceRole(role) ?: throw NotFoundException("Service", role.name)
         return walletRepository.findByServiceId(service.id)
     }
 }
